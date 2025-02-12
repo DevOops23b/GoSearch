@@ -1,0 +1,17 @@
+Fejl I legacy koden 
+
+   (RETTET) Outdated version af Python. 
+
+    Et sikkerhedsproblem med nøglen, “SECRET_KEY”, som er hardcoded. 
+
+   (RETTET) Der mangler parenteser ved print i check_db_exists og init_db. Kan være det bare er python 2 syntax. 
+
+    Det ligner at der er ingen exception håndtering, som i python ville være “try-except” blokke. Kunne bruges i f.eks. “connect_db” i forhold til forbindelsen. 
+
+    Der bliver brugt md5 for password hashing som er kendt for at være meget usikker. Bcrypt, Argon2 eller SHA-2 er mere moderne, og anbefalede hash metoder. 
+
+    login, register, logout routen mangler GET/POST. 
+
+     Ingen begrænsning på loginforsøg, brute-force angreb er mulige. 
+
+    Debug er false, som nok bør være true for at lette fejlfinding. 

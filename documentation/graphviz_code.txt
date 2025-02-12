@@ -1,0 +1,92 @@
+digraph G {
+
+  subgraph cluster_0 {
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=white];
+    Flask -> blinker
+    Flask -> click
+    click -> colorama
+    Flask -> itsdangerous
+    Flask -> Jinja2
+    Jinja2 -> MarkupSafe
+    Flask -> Werkzeug
+    Werkzeug -> MarkupSafe
+    ;
+    label = "Flask";
+  }
+
+  subgraph cluster_1 {
+    style=filled;
+    color=lightgrey;
+    node [style=filled, color=white];
+    fqdn;
+    label = "fqdn";
+  }
+  
+  subgraph cluster_2 {
+    style=filled;
+    color=lightgrey;
+    node [style=filled, color=white];
+    isoduration -> arrow
+    arrow -> pythonDateutil
+    pythonDateutil -> six
+    arrow -> typesPythonDateutil;
+    label = "isoduration";
+  }
+  
+  subgraph cluster_3 {
+    style=filled;
+    color=lightgrey;
+    node [style=filled, color=white];
+    jsonpointer;
+    label = "jsonpointer";
+  }
+  
+  
+  subgraph cluster_4 {
+    style=filled;
+    color=lightgrey;
+    node [style=filled, color=white];
+    jupyter -> ipykernel
+    ipykernel -> comm
+    comm -> traitlets
+    ipykernel -> debugpy
+    ipykernel -> ipython
+    ipython -> colorama
+    ipython -> decorator
+    ipython -> jedi
+    jedi -> parso
+    ipython -> matplotlibInline
+    matplotlibInline -> traitlets
+    ipython -> promt_toolkit
+    promt_toolkit -> wcwidth
+    ipython -> Pygments
+    ipython -> stackData
+    stackData -> asttokens
+    stackData -> executing
+    stackData -> pure_eval
+    ipython -> traitlets
+    ipykernel -> jupyter_client
+    jupyter_client -> jupyter_core
+    jupyter_core -> platformdirs
+    jupyter_core -> pywin32
+    jupyter_core -> traitlets
+    jupyter_client -> pythonDateutil
+    pythonDateutil -> six
+    jupyter_client -> pyzmq
+    jupyter_client -> tornado
+    jupyter_client -> traitlets
+    ipykernel -> jupyter_core
+    jupyter_core -> platformdirs
+    jupyter_core -> pywin32
+    jupyter_core -> traitlets
+    
+    
+    label = "jupyter";
+  }
+    
+
+  //start [shape=Mdiamond];
+  //end [shape=Msquare];
+}
