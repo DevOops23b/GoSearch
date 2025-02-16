@@ -106,8 +106,38 @@ func searchHandler (w http.ResponseWritter, r *http.Request) {
 
 	var searchResults []map[string]interface{
 		if query!= "" {
-			rows, err :=
+			rows, err != queryDB(
+				"SELECT * FROM pages WHERE language = ? 
+				AND content LIKE ?", language, "%"+query+"%")
+			if err != nil {
+				http.Error(w, "Database error", http.StatusInternalServerError)
+				return
+			}
+			defer rows.Close()
+
+			for rowsNext() {
+				var title, url, description string
+				if err := rows.Scan(&title, &url, &description); err != nil {
+					http.Error(w, "Error reading row", http.StatusInternalServerError)
+					return
+				}
+				searchResults = append(searchResults, map[string]interface{}{
+					"title":	title,
+					"url":		url,
+					"description": description,
+				})
+			}
 		}
+
+		tmpl, err := template.ParseFiles("templates/index.html")
+		if err != nil {
+			http.Error(w, "Error loading template", http.StatusInternalServerError)
+			return
+		}
+		tmpl.Execute(w, map[string]interface{}{
+			"search_results": searchResults,
+			"query": 		  query,
+		})
 	}
 }
 
