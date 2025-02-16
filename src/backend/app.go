@@ -94,7 +94,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 //////////////////////////////////////////////////////////////////////////////////
 
 // Viser search api-server.
-func searchHandler (w http.ResponseWriter, r *http.Request) {
+/*func searchHandler (w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
 	query := r.URL.Query().Get("q")
 	language := r.URL.Query().Get("language")
@@ -127,6 +127,8 @@ func searchHandler (w http.ResponseWriter, r *http.Request) {
 				"description": description,
 			})
 		}
+
+
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -134,7 +136,34 @@ func searchHandler (w http.ResponseWriter, r *http.Request) {
 		"search_results": searchResults,
 	})
 	
+}*/
+
+// Med dummydata for at teste endpointsne
+func searchHandler(w http.ResponseWriter, r *http.Request) {
+	// Hent query-parametre
+	query := r.URL.Query().Get("q")
+	language := r.URL.Query().Get("language")
+	if language == "" {
+		language = "en"
+	}
+
+	// Dummy data til test
+	searchResults := []map[string]interface{}{
+		{"title": "Mock Page 1", "url": "http://test1.com", "description": "This is a test result 1"},
+		{"title": "Mock Page 2", "url": "http://test2.com", "description": "This is a test result 2"},
+	}
+
+	// Log query til terminalen (for debugging)
+	fmt.Printf("Search query: %s, Language: %s\n", query, language)
+
+	// Sæt Content-Type til JSON og send svar
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"search_results": searchResults,
+	})
 }
+
+
 
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -150,8 +179,8 @@ func searchHandler (w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// initialiserer databasen og forbinder til den. 
-	initDB()
-	defer closeDB()
+	//initDB() // skal udkommenteres under test af search dummy-data
+	//defer closeDB() // skal udkommenteres under test af search dummy-data
 
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
