@@ -7,14 +7,14 @@ import (
 	"os"
 	//Tilføjet disse pakker grundet search funktion
 	"encoding/json" // Gør at vi kan læse json-format
-	"html/template" // til html-sider(skabeloner
+	"html/template" // til html-sider(skabeloner)
 	"net/http" // til http-servere og håndtering af routere
 
 	// en router til http-requests
 	"github.com/gorilla/mux"
 
 	// Database-connection. Go undersøtter ikke SQLite, og derfor skal vi importere en driver
-	//"github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -74,11 +74,6 @@ func closeDB() {
 	}
 }
 
-func main() {
-	initDB()
-	defer closeDB()
-}
-
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Root handlers
@@ -99,7 +94,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 //////////////////////////////////////////////////////////////////////////////////
 
 // Viser search api-server.
-func searchHandler (w http.ResponseWritter, r *http.Request) {
+func searchHandler (w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
 	query := r.URL.Query().Get("q")
 	language := r.URL.Query().Get("language")
@@ -108,11 +103,11 @@ func searchHandler (w http.ResponseWritter, r *http.Request) {
 	}
 
 	//Henter query-parameterne
-	var searchResults []map[string]interface{
+	var searchResults []map[string]interface{}
 	if query!= "" {
-		rows, err != queryDB(
-			"SELECT * FROM pages WHERE language = ? 
-			AND content LIKE ?", language, "%"+query+"%")
+		rows, err := queryDB(
+			"SELECT * FROM pages WHERE language = ? AND content LIKE ?", 
+			language, "%"+query+"%")
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
@@ -120,7 +115,7 @@ func searchHandler (w http.ResponseWritter, r *http.Request) {
 		defer rows.Close()
 			
 		// SQL-forespørgsel - finder sider i databasen, hvor 'content' matcher 'query'
-		for rowsNext() {
+		for rows.Next() {
 			var title, url, description string
 			if err := rows.Scan(&title, &url, &description); err != nil {
 				http.Error(w, "Error reading row", http.StatusInternalServerError)
