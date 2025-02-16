@@ -153,5 +153,12 @@ func searchHandler (w http.ResponseWritter, r *http.Request) {
 /// Main
 //////////////////////////////////////////////////////////////////////////////////
 
-
+func main() {
+	var err error
+	db, err = connectDB()
+	if err != nil {
+		log.Fatalf("Errorconnecting to database: %v", err)
+	}
+	defer closeDB()
+}
 
