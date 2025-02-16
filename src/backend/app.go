@@ -6,8 +6,12 @@ import (
 	"log"
 	"os"
 	//Tilføjet disse pakker grundet search funktion
+	"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner
 	"net/http" // til http-servere og håndtering af routere
+
+	// en router til http-requests
+	"github.com/gorilla/mux"
 
 	// Database-connection. Go undersøtter ikke SQLite, og derfor skal vi importere en driver
 	//"github.com/mattn/go-sqlite3"
@@ -77,25 +81,24 @@ func main() {
 
 
 //////////////////////////////////////////////////////////////////////////////////
-/// Page Routes & API Routes
+/// Root handlers
 //////////////////////////////////////////////////////////////////////////////////
 
-// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
-///Opretter en ny router
-r := mux.NewRouter() 
-//Definerer routerne.
-r.HandleFunc("/", searchHandler) // hjemmeside ruten
-r.HandleFunc("/api/search", apiSearchHandler) // API-ruten for søgninger.
-
-
-
-
+// Viser forside
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("templates/index.html")
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, nil)
+}
 
 //////////////////////////////////////////////////////////////////////////////////
-/// Search Funktions
+/// Search handler
 //////////////////////////////////////////////////////////////////////////////////
 
-
+// Viser search api-server.
 func searchHandler (w http.ResponseWritter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
 	query := r.URL.Query().Get("q")
@@ -104,41 +107,38 @@ func searchHandler (w http.ResponseWritter, r *http.Request) {
 		language = "en"
 	}
 
+	//Henter query-parameterne
 	var searchResults []map[string]interface{
-		if query!= "" {
-			rows, err != queryDB(
-				"SELECT * FROM pages WHERE language = ? 
-				AND content LIKE ?", language, "%"+query+"%")
-			if err != nil {
-				http.Error(w, "Database error", http.StatusInternalServerError)
-				return
-			}
-			defer rows.Close()
-
-			for rowsNext() {
-				var title, url, description string
-				if err := rows.Scan(&title, &url, &description); err != nil {
-					http.Error(w, "Error reading row", http.StatusInternalServerError)
-					return
-				}
-				searchResults = append(searchResults, map[string]interface{}{
-					"title":	title,
-					"url":		url,
-					"description": description,
-				})
-			}
-		}
-
-		tmpl, err := template.ParseFiles("templates/index.html")
+	if query!= "" {
+		rows, err != queryDB(
+			"SELECT * FROM pages WHERE language = ? 
+			AND content LIKE ?", language, "%"+query+"%")
 		if err != nil {
-			http.Error(w, "Error loading template", http.StatusInternalServerError)
+			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
-		tmpl.Execute(w, map[string]interface{}{
-			"search_results": searchResults,
-			"query": 		  query,
-		})
+		defer rows.Close()
+			
+		// SQL-forespørgsel - finder sider i databasen, hvor 'content' matcher 'query'
+		for rowsNext() {
+			var title, url, description string
+			if err := rows.Scan(&title, &url, &description); err != nil {
+				http.Error(w, "Error reading row", http.StatusInternalServerError)
+				return
+			}
+			searchResults = append(searchResults, map[string]interface{}{
+				"title":	title,
+				"url":		url,
+				"description": description,
+			})
+		}
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"search_results": searchResults,
+	})
+	
 }
 
 
@@ -154,11 +154,21 @@ func searchHandler (w http.ResponseWritter, r *http.Request) {
 //////////////////////////////////////////////////////////////////////////////////
 
 func main() {
-	var err error
-	db, err = connectDB()
-	if err != nil {
-		log.Fatalf("Errorconnecting to database: %v", err)
-	}
+	// initialiserer databasen og forbinder til den. 
+	initDB()
 	defer closeDB()
+
+	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
+	///Opretter en ny router
+	r := mux.NewRouter() 
+	//Definerer routerne.
+	r.HandleFunc("/", rootHandler).Methods("GET") // Forside
+	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
+
+
+	fmt.Println("Server running on http://localhost:8080")
+	//Starter serveren.
+	log.Fatal(http.ListenAndServe(":8080", r))
+
 }
 
