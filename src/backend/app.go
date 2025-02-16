@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 	//Tilføjet disse pakker grundet search funktion
-	"encoding/json" // Gør at vi kan læse json-format
+	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
 	"net/http" // til http-servere og håndtering af routere
 
@@ -81,7 +81,7 @@ func closeDB() {
 
 // Viser forside
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("templates/index.html")
+	tmpl, err := template.ParseFiles("../frontend/templates/index.html")
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
@@ -103,8 +103,8 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Henter query-parameterne
-	var searchResults []map[string]interface{}
-	if query!= "" {
+	var searchResults []map[string]string
+	if query != "" {
 		rows, err := queryDB(
 			"SELECT * FROM pages WHERE language = ? AND content LIKE ?", 
 			language, "%"+query+"%")
@@ -121,17 +121,31 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Error reading row", http.StatusInternalServerError)
 				return
 			}
-			searchResults = append(searchResults, map[string]interface{}{
+			searchResults = append(searchResults, map[string]string{
 				"title":	title,
 				"url":		url,
 				"description": description,
 			})
 		}
 
-
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	//indlæser search.htmlmed resultater
+	tmpl, err := template.ParseFiles("../frontend/templates/search.html")
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+
+	// sender data til html-templaten
+	tmpl.Execute(w, map[string]interface{}{
+		"Query": 	query,
+		"Results": 	searchResults,
+	})
+
+
+	//Sendte json objekter
+	/*w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"search_results": searchResults,
 	})
@@ -140,7 +154,6 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 // Med dummydata for at teste endpointsne
 func searchHandler(w http.ResponseWriter, r *http.Request) {
-	// Hent query-parametre
 	query := r.URL.Query().Get("q")
 	language := r.URL.Query().Get("language")
 	if language == "" {
@@ -148,18 +161,25 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Dummy data til test
-	searchResults := []map[string]interface{}{
-		{"title": "Mock Page 1", "url": "http://test1.com", "description": "This is a test result 1"},
-		{"title": "Mock Page 2", "url": "http://test2.com", "description": "This is a test result 2"},
+	searchResults := []map[string]string{
+		{"Title": "Mock Page 1", "URL": "http://test1.com", "Description": "This is a test result 1"},
+		{"Title": "Mock Page 2", "URL": "http://test2.com", "Description": "This is a test result 2"},
 	}
 
 	// Log query til terminalen (for debugging)
 	fmt.Printf("Search query: %s, Language: %s\n", query, language)
 
-	// Sæt Content-Type til JSON og send svar
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"search_results": searchResults,
+	// Indlæs search.html med dummyresultater
+	tmpl, err := template.ParseFiles("../frontend/templates/search.html")
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+
+	// Send data til HTML-templaten
+	tmpl.Execute(w, map[string]interface{}{
+		"Query":   query,
+		"Results": searchResults,
 	})
 }
 
@@ -188,7 +208,8 @@ func main() {
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET") // Forside
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
-
+	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
 
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.

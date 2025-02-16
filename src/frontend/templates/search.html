@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+</head>
+<body>
+    <div class="page">
+        <nav class="navigation">
+            <h1><a id="nav-logo" href="/">¿Who Knows?</a></h1>
+            <a id="nav-login" href="#">Log in</a>
+            <a id="nav-register" href="#">Register</a>
+        </nav>
+
+        <div class="body">
+            <h2>Search Results for "{{ .Query }}"</h2>
+    
+            {{ if not .Results }}
+                <p>No results found.</p>
+            {{ else }}
+                <div id="results">
+                    {{ range .Results }}
+                        <div>
+                            <h2><a href="{{ .URL }}" class="search-result-title">{{ .Title }}</a></h2>
+                            <p class="search-result-description">{{ .Description }}</p>
+                        </div>
+                    {{ end }}
+                </div>
+            {{ end }}
+    
+        </div>
+
+        <div class="footer">
+            <span>¿Who Knows? &copy; 2025</span>
+            <a href="#">About</a>
+        </div>
+
+    </div>
+
+</body>
+</html>
