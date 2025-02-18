@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	//"golang.org/x/crypto/bcrypt" Will be added later
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
@@ -14,6 +15,9 @@ import (
 
 	// Database-connection. Go undersøtter ikke SQLite, og derfor skal vi importere en driver
 	_ "github.com/mattn/go-sqlite3"
+
+
+	"github.com/gorilla/sessions"
 )
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -25,6 +29,14 @@ const (
 )
 
 var db *sql.DB
+
+var store = sessions.NewCookieStore([]byte("Very-secret-key"))
+
+type User struct {
+	ID			int		`json:"id"`
+	Username	string	`json:"username"`
+	Password	string	`json:"password"`
+}
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Database Functions
@@ -183,6 +195,71 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 
+//////////////////////////////////////////////////////////////////////////////////
+/// Page routes
+//////////////////////////////////////////////////////////////////////////////////
+
+func login(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, "session-name") //Due to err, the error will not be ignored
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if _, ok := session.Values["user_id"]; ok {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	tmpl := template.Must(template.ParseFiles("../frontend/templates/login.html"))
+	tmpl.Execute(w, nil)
+
+}
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////
+/// API routes
+//////////////////////////////////////////////////////////////////////////////////
+
+func apiLogin(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid request!!!", http.StatusBadRequest)
+		return
+	}
+
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	var user User
+
+	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = ?", username).Scan(&user.ID, &user.Username, &user.Password)
+
+	if err != nil {
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	}
+
+	if user.Password != password {
+		http.Error(w, "Invalid password", http.StatusUnauthorized)
+		return
+	}
+
+	session, err := store.Get(r, "session-name")
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	session.Values["user_id"] = user.ID
+	session.Save(r, w)
+
+	http.Redirect(w, r, "/", http.StatusFound)
+
+
+}
+
 
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +279,7 @@ func requestHandler() {
 	router.HandleFunc("/api/login", apiLogin).Methods("POST")
 }
 
+
 func main() {
 	// initialiserer databasen og forbinder til den. 
 	//initDB() // skal udkommenteres under test af search dummy-data
@@ -215,11 +293,11 @@ func main() {
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
-
+	requestHandler()
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.
 	log.Fatal(http.ListenAndServe(":8080", r))
 
-	requestHandler()
+	
 
 }
