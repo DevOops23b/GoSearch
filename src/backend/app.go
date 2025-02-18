@@ -193,8 +193,14 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// initialiserer databasen og forbinder til den.
-	//initDB() // skal udkommenteres under test af search dummy-data
-	//defer closeDB() // skal udkommenteres under test af search dummy-data
+	initDB()        // skal udkommenteres under test af search dummy-data
+	defer closeDB() // skal udkommenteres under test af search dummy-data
+
+	err := db.Ping()
+	if err != nil {
+		log.Fatalf("Database connection failed: %v", err)
+	}
+	fmt.Println("Database connection successful!")
 
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
