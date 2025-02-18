@@ -83,7 +83,20 @@ func closeDB() {
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("../frontend/templates/index.html")
 	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		http.Error(w, "Error loading index-side", http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, nil)
+}
+//////////////////////////////////////////////////////////////////////////////////
+/// about handler
+//////////////////////////////////////////////////////////////////////////////////
+
+// Viser about-siden
+func aboutHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("../frontend/templates/about.html")
+	if err != nil {
+		http.Error(w, "Error loading about-side", http.StatusInternalServerError)
 		return
 	}
 	tmpl.Execute(w, nil)
@@ -207,7 +220,11 @@ func main() {
 	r := mux.NewRouter() 
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET") // Forside
+	r.HandleFunc("/about", aboutHandler).Methods("GET") //about-side
+
+	// Definerer api-erne
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
+
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
 
