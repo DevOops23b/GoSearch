@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
-	"net/http" // til http-servere og håndtering af routere
+	"net/http"      // til http-servere og håndtering af routere
 
 	// en router til http-requests
 	"github.com/gorilla/mux"
@@ -74,7 +75,6 @@ func closeDB() {
 	}
 }
 
-
 //////////////////////////////////////////////////////////////////////////////////
 /// Root handlers
 //////////////////////////////////////////////////////////////////////////////////
@@ -88,6 +88,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl.Execute(w, nil)
 }
+
 //////////////////////////////////////////////////////////////////////////////////
 /// about handler
 //////////////////////////////////////////////////////////////////////////////////
@@ -119,14 +120,14 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 	var searchResults []map[string]string
 	if query != "" {
 		rows, err := queryDB(
-			"SELECT * FROM pages WHERE language = ? AND content LIKE ?", 
+			"SELECT * FROM pages WHERE language = ? AND content LIKE ?",
 			language, "%"+query+"%")
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
-			
+
 		// SQL-forespørgsel - finder sider i databasen, hvor 'content' matcher 'query'
 		for rows.Next() {
 			var title, url, description string
@@ -162,7 +163,7 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"search_results": searchResults,
 	})
-	
+
 }*/
 
 // Med dummydata for at teste endpointsne
@@ -196,30 +197,30 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
-
-
 //////////////////////////////////////////////////////////////////////////////////
 /// Security Functions
 //////////////////////////////////////////////////////////////////////////////////
-
-
-
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Main
 //////////////////////////////////////////////////////////////////////////////////
 
 func main() {
-	// initialiserer databasen og forbinder til den. 
-	//initDB() // skal udkommenteres under test af search dummy-data
-	//defer closeDB() // skal udkommenteres under test af search dummy-data
+	// initialiserer databasen og forbinder til den.
+	initDB()        // skal udkommenteres under test af search dummy-data
+	defer closeDB() // skal udkommenteres under test af search dummy-data
+
+	err := db.Ping()
+	if err != nil {
+		log.Fatalf("Database connection failed: %v", err)
+	}
+	fmt.Println("Database connection successful!")
 
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
-	r := mux.NewRouter() 
+	r := mux.NewRouter()
 	//Definerer routerne.
-	r.HandleFunc("/", rootHandler).Methods("GET") // Forside
+	r.HandleFunc("/", rootHandler).Methods("GET")       // Forside
 	r.HandleFunc("/about", aboutHandler).Methods("GET") //about-side
 
 	// Definerer api-erne
@@ -233,4 +234,3 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", r))
 
 }
-
