@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¿Who Knows?</title>
+    <link rel="stylesheet" type="text/css" href="static/style.css">
+</head>
+<body>
+    <div class="page">
+        <nav class="navigation">
+            <h1><a id="nav-logo" href="/">¿Who Knows?</a></h1>
+            <a id="nav-login" href="#">Log in</a>
+            <a id="nav-register" href="#">Register</a>
+        </nav>
+
+        <div class="body">
+            <form action="/api/search" method="GET">
+                <input type="text" name="q" placeholder="Search..." value="{{.Query}}">
+                <button type="submit">Search</button>
+            </form>
+        </div>
+            
+
+        <div class="footer">
+            <span>¿Who Knows? &copy; 2025</span>
+            <a href="#">About</a>
+        </div>
+
+    </div>
+    
+</body>
+</html>
