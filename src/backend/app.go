@@ -291,18 +291,19 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-/*
+
 	if username == "" || password == "" {
-		data["Error"] = "Please enter both username and password"
+		data := PageData{Error: "Please enter both username and password"}
+		tmpl.ExecuteTemplate(w, "login.html", data)
 	}
 
 	if user.Password != password {
-		data["Error"] = "Invalid password"
+		data := PageData{Error: "Invalid password"}
 		w.WriteHeader(http.StatusUnauthorized)
-		tmpl.ExecuteTemplate(w, "layout.html", data)
+		tmpl.ExecuteTemplate(w, "login.html", data)
 		return
 	}
-*/
+
 	session, err := store.Get(r, "session-name")
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -334,12 +335,6 @@ func validatePassword(hashedPassword, inputPassword string) bool {
 /// Main
 //////////////////////////////////////////////////////////////////////////////////
 
-func requestHandler() {
-	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/login", login).Methods("GET")
-	router.HandleFunc("/api/login", apiLogin).Methods("POST")
-}
-
 
 func main() {
 	// initialiserer databasen og forbinder til den. 
@@ -354,7 +349,12 @@ func main() {
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
-	requestHandler()
+
+	// Login
+
+	r.HandleFunc("/login", login).Methods("GET")
+	r.HandleFunc("/api/login", apiLogin).Methods("POST")
+	
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.
 	log.Fatal(http.ListenAndServe(":8080", r))
