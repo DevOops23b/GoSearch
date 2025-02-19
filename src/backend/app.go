@@ -108,7 +108,7 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 //////////////////////////////////////////////////////////////////////////////////
 
 // Viser search api-server.
-func searchHandler (w http.ResponseWriter, r *http.Request) {
+func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
 	query := r.URL.Query().Get("q")
 	language := r.URL.Query().Get("language")
@@ -136,8 +136,8 @@ func searchHandler (w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			searchResults = append(searchResults, map[string]string{
-				"title":	title,
-				"url":		url,
+				"title":       title,
+				"url":         url,
 				"description": description,
 			})
 		}
@@ -153,10 +153,9 @@ func searchHandler (w http.ResponseWriter, r *http.Request) {
 
 	// sender data til html-templaten
 	tmpl.Execute(w, map[string]interface{}{
-		"Query": 	query,
-		"Results": 	searchResults,
+		"Query":   query,
+		"Results": searchResults,
 	})
-
 
 	//Sendte json objekter
 	/*w.Header().Set("Content-Type", "application/json")
