@@ -108,7 +108,7 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 //////////////////////////////////////////////////////////////////////////////////
 
 // Viser search api-server.
-/*func searchHandler (w http.ResponseWriter, r *http.Request) {
+func searchHandler (w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
 	query := r.URL.Query().Get("q")
 	language := r.URL.Query().Get("language")
@@ -162,12 +162,12 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 	/*w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"search_results": searchResults,
-	})
+	})*/
 
-}*/
+}
 
 // Med dummydata for at teste endpointsne
-func searchHandler(w http.ResponseWriter, r *http.Request) {
+/*func searchHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	language := r.URL.Query().Get("language")
 	if language == "" {
@@ -195,7 +195,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		"Query":   query,
 		"Results": searchResults,
 	})
-}
+}*/
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Security Functions
