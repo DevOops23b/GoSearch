@@ -8,7 +8,7 @@ import (
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
-	"net/http" // til http-servere og håndtering af routere
+	"net/http"      // til http-servere og håndtering af routere
 
 	// en router til http-requests
 	"github.com/gorilla/mux"
@@ -92,7 +92,6 @@ func closeDB() {
 	}
 }
 
-
 //////////////////////////////////////////////////////////////////////////////////
 /// Root handlers
 //////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +100,21 @@ func closeDB() {
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("../frontend/templates/index.html")
 	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		http.Error(w, "Error loading index-side", http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, nil)
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+/// about handler
+//////////////////////////////////////////////////////////////////////////////////
+
+// Viser about-siden
+func aboutHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("../frontend/templates/about.html")
+	if err != nil {
+		http.Error(w, "Error loading about-side", http.StatusInternalServerError)
 		return
 	}
 	tmpl.Execute(w, nil)
@@ -124,14 +137,14 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	var searchResults []map[string]string
 	if query != "" {
 		rows, err := queryDB(
-			"SELECT * FROM pages WHERE language = ? AND content LIKE ?", 
+			"SELECT * FROM pages WHERE language = ? AND content LIKE ?",
 			language, "%"+query+"%")
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
-			
+
 		// SQL-forespørgsel - finder sider i databasen, hvor 'content' matcher 'query'
 		for rows.Next() {
 			var title, url, description string
@@ -167,7 +180,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"search_results": searchResults,
 	})
-	
+
 }*/
 
 // Med dummydata for at teste endpointsne
@@ -337,16 +350,26 @@ func validatePassword(hashedPassword, inputPassword string) bool {
 
 
 func main() {
-	// initialiserer databasen og forbinder til den. 
-	//initDB() // skal udkommenteres under test af search dummy-data
-	//defer closeDB() // skal udkommenteres under test af search dummy-data
+	// initialiserer databasen og forbinder til den.
+	initDB()        // skal udkommenteres under test af search dummy-data
+	defer closeDB() // skal udkommenteres under test af search dummy-data
+
+	err := db.Ping()
+	if err != nil {
+		log.Fatalf("Database connection failed: %v", err)
+	}
+	fmt.Println("Database connection successful!")
 
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
-	r := mux.NewRouter() 
+	r := mux.NewRouter()
 	//Definerer routerne.
-	r.HandleFunc("/", rootHandler).Methods("GET") // Forside
+	r.HandleFunc("/", rootHandler).Methods("GET")       // Forside
+	r.HandleFunc("/about", aboutHandler).Methods("GET") //about-side
+
+	// Definerer api-erne
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
+
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
 
