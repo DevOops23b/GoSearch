@@ -10,6 +10,6 @@ require (
 require (
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/sessions v1.4.0 // indirect
-	golang.org/x/crypto v0.0.0-20240207153714-82a30c7c0429
+	golang.org/x/crypto v0.33.0 // indirect
 
 )

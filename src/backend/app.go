@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	//"golang.org/x/crypto/bcrypt" Will be added later
+	"golang.org/x/crypto/bcrypt" //Will be added later
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
@@ -36,6 +36,13 @@ type User struct {
 	ID			int		`json:"id"`
 	Username	string	`json:"username"`
 	Password	string	`json:"password"`
+}
+
+type PageData struct {
+	User		*User
+	Error		string
+	Title		string
+	Template	string
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -199,7 +206,29 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 /// Page routes
 //////////////////////////////////////////////////////////////////////////////////
 
+var tmpl = template.Must(template.ParseFiles("../frontend/templates/layout.html", "../frontend/templates/login.html"))
+
 func login(w http.ResponseWriter, r *http.Request) {
+	
+	data := PageData{
+		Title: "Log in",
+		Template: "login",
+	}
+
+	err := tmpl.ExecuteTemplate(w, "layout.html", data)
+
+	if err != nil {
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+	
+	}
+
+
+
+	/*
+	data := map[string]interface{} {
+		"Error": "", // default error message
+	}
+
 	session, err := store.Get(r, "session-name") //Due to err, the error will not be ignored
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -211,19 +240,29 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl := template.Must(template.ParseFiles("../frontend/templates/login.html"))
+
+
+	
 	tmpl.Execute(w, nil)
+	tmpl.ExecuteTemplate(w, "layout.html", data)
+	*/
 
 }
-
-
 
 
 //////////////////////////////////////////////////////////////////////////////////
 /// API routes
 //////////////////////////////////////////////////////////////////////////////////
 
-func apiLogin(w http.ResponseWriter, r *http.Request) {
+func apiLogin(w http.ResponseWriter, r *http.Request) {	
+	/*
+	data := map[string]interface{} {
+		"Error": "", // default error message
+	}
+
+	*/
+
+
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, "Invalid request!!!", http.StatusBadRequest)
@@ -238,15 +277,32 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = ?", username).Scan(&user.ID, &user.Username, &user.Password)
 
 	if err != nil {
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		data := PageData{Error: "Invalid username"}
+		tmpl.ExecuteTemplate(w, "login.html", data)
+		//http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
+	}
+
+	validated := validatePassword(user.Password, password)
+
+	if validated == false {
+		data := PageData{Error: "Invalid password"}
+		tmpl.ExecuteTemplate(w, "login.html", data)
+		return
+	}
+
+/*
+	if username == "" || password == "" {
+		data["Error"] = "Please enter both username and password"
 	}
 
 	if user.Password != password {
-		http.Error(w, "Invalid password", http.StatusUnauthorized)
+		data["Error"] = "Invalid password"
+		w.WriteHeader(http.StatusUnauthorized)
+		tmpl.ExecuteTemplate(w, "layout.html", data)
 		return
 	}
-
+*/
 	session, err := store.Get(r, "session-name")
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -255,7 +311,9 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	session.Values["user_id"] = user.ID
 	session.Save(r, w)
 
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+
+	
 
 
 }
@@ -266,7 +324,10 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 /// Security Functions
 //////////////////////////////////////////////////////////////////////////////////
 
-
+func validatePassword(hashedPassword, inputPassword string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(inputPassword))
+	return err == nil
+}
 
 
 //////////////////////////////////////////////////////////////////////////////////
