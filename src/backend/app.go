@@ -1,10 +1,13 @@
 package main
+
 import (
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
+
 	"golang.org/x/crypto/bcrypt" //Will be added later
+
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
@@ -15,7 +18,6 @@ import (
 
 	// Database-connection. Go undersøtter ikke SQLite, og derfor skal vi importere en driver
 	_ "github.com/mattn/go-sqlite3"
-
 
 	"github.com/gorilla/sessions"
 )
@@ -33,16 +35,16 @@ var db *sql.DB
 var store = sessions.NewCookieStore([]byte("Very-secret-key"))
 
 type User struct {
-	ID			int		`json:"id"`
-	Username	string	`json:"username"`
-	Password	string	`json:"password"`
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type PageData struct {
-	User		*User
-	Error		string
-	Title		string
-	Template	string
+	User     *User
+	Error    string
+	Title    string
+	Template string
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +215,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }*/
 
-
 //////////////////////////////////////////////////////////////////////////////////
 /// Page routes
 //////////////////////////////////////////////////////////////////////////////////
@@ -221,9 +222,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 var tmpl = template.Must(template.ParseFiles("../frontend/templates/layout.html", "../frontend/templates/login.html"))
 
 func login(w http.ResponseWriter, r *http.Request) {
-	
+
 	data := PageData{
-		Title: "Log in",
+		Title:    "Log in",
 		Template: "login",
 	}
 
@@ -231,49 +232,54 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
-	
+
 	}
-
-
 
 	/*
-	data := map[string]interface{} {
-		"Error": "", // default error message
-	}
+		data := map[string]interface{} {
+			"Error": "", // default error message
+		}
 
-	session, err := store.Get(r, "session-name") //Due to err, the error will not be ignored
-	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+		session, err := store.Get(r, "session-name") //Due to err, the error will not be ignored
+		if err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 
-	if _, ok := session.Values["user_id"]; ok {
-		http.Redirect(w, r, "/", http.StatusFound)
-		return
-	}
+		if _, ok := session.Values["user_id"]; ok {
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
 
 
 
-	
-	tmpl.Execute(w, nil)
-	tmpl.ExecuteTemplate(w, "layout.html", data)
+
+		tmpl.Execute(w, nil)
+		tmpl.ExecuteTemplate(w, "layout.html", data)
 	*/
 
 }
 
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "session-name")
+	session.Values["user_id"] = nil
+	session.Options.MaxAge = -1 // Delete session
+	session.Save(r, w)
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
 
 //////////////////////////////////////////////////////////////////////////////////
 /// API routes
 //////////////////////////////////////////////////////////////////////////////////
 
-func apiLogin(w http.ResponseWriter, r *http.Request) {	
+func apiLogin(w http.ResponseWriter, r *http.Request) {
 	/*
-	data := map[string]interface{} {
-		"Error": "", // default error message
-	}
+		data := map[string]interface{} {
+			"Error": "", // default error message
+		}
 
 	*/
-
 
 	err := r.ParseForm()
 	if err != nil {
@@ -303,7 +309,6 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	if username == "" || password == "" {
 		data := PageData{Error: "Please enter both username and password"}
 		tmpl.ExecuteTemplate(w, "login.html", data)
@@ -326,12 +331,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
-	
-
-
 }
-
-
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Security Functions
@@ -342,11 +342,9 @@ func validatePassword(hashedPassword, inputPassword string) bool {
 	return err == nil
 }
 
-
 //////////////////////////////////////////////////////////////////////////////////
 /// Main
 //////////////////////////////////////////////////////////////////////////////////
-
 
 func main() {
 	// initialiserer databasen og forbinder til den.
@@ -376,11 +374,12 @@ func main() {
 
 	r.HandleFunc("/login", login).Methods("GET")
 	r.HandleFunc("/api/login", apiLogin).Methods("POST")
-	
+
+	//logout
+	r.HandleFunc("/api/logout", logoutHandler).Methods("GET")
+
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.
 	log.Fatal(http.ListenAndServe(":8080", r))
-
-	
 
 }
