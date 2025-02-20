@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - ¿Who Knows?</title>
+    <link rel="stylesheet" type="text/css" href="static/style.css">
+</head>
+<body>
+    <div class="page">
+        <nav class="navigation">
+            <h1><a id="nav-logo" href="/">¿Who Knows?</a></h1>
+            <a id="nav-login" href="/login">Log in</a>
+            <a id="nav-register" href="/register">Register</a>
+        </nav>
+
+        <div class="body">
+            <h2>Register</h2>
+            <form action="/api/register" method="POST">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+
+                <label for="password2">Confirm Password:</label>
+                <input type="password" id="password2" name="password2" required>
+
+                <button type="submit">Register</button>
+            </form>
+
+            {{ if .Error }}
+            <p class="error">{{ .Error }}</p>
+            {{ end }}
+        </div>
+
+        <div class="footer">
+            <span>¿Who Knows? &copy; 2025</span>
+            <a href="/about">About</a>
+        </div>
+    </div>
+</body>
+</html>
