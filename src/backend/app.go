@@ -443,7 +443,12 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword := hashPassword(password)
+	hashedPassword, err := hashPassword(password)
+	if err != nil {
+		http.Error(w, "Error hashing password", http.StatusInternalServerError)
+		return
+	}
+
 	_, err = db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, hashedPassword)
 	if err!= nil {
 		http.Error(w, "Databse error", http.StatusInternalServerError)
@@ -452,6 +457,15 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 
 	
+}
+
+//hasher passwordet med bcrypt.
+func hashPassword(password string) (string, error) {
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedBytes), nil
 }
 
 //Ser om brugere allerede eksisterer
