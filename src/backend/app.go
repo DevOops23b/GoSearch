@@ -14,6 +14,9 @@ import (
 	// en router til http-requests
 	"github.com/gorilla/mux"
 
+	//Til at hashe passwords
+	"golang.org/x/crypto/bcrypt"
+
 	// Database-connection. Go undersøtter ikke SQLite, og derfor skal vi importere en driver
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -257,7 +260,7 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	hashedPassword := hashPassword(password)
 	_, err = db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, hashedPassword)
-	if err!= mil {
+	if err!= nil {
 		http.Error(w, "Databse error", http.StatusInternalServerError)
 		return
 	} 
