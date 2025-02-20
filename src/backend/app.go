@@ -440,6 +440,14 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hashedPassword := hashPassword(password)
+	_, err = db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, hashedPassword)
+	if err!= mil {
+		http.Error(w, "Databse error", http.StatusInternalServerError)
+		return
+	} 
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+
 	
 }
 
