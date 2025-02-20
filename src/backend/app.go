@@ -375,6 +375,100 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
 }
+	// Send data til HTML-templaten
+	tmpl.Execute(w, map[string]interface{}{
+		"Query":   query,
+		"Results": searchResults,
+	})
+}*/
+
+//////////////////////////////////////////////////////////////////////////////////
+/// Register handlers
+//////////////////////////////////////////////////////////////////////////////////
+
+// viser registreringssiden.
+func registerHandler(w http.ResponseWriter, r *http.Request) {
+	if userIsLoggedIn(r) {
+		http.Redirect(w, r, "/search", http.StatusFound)
+		return
+	}
+	tmpl, err := template.ParseFiles("../frontend/templates/register.html")
+	if err != nil {
+		http.Error(w, "Error loading register page", http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, nil)
+}
+
+//Håndterer registreringsprocessen
+func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
+	if userIsLoggedIn(r) {
+		http.Redirect(w, r, "/search", http.StatusFound)
+		return
+	}
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid data", http.StatusBadRequest)
+		return
+	}
+
+	username := r.FormValue("username")
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+	password2 := r.FormValue("password2")
+
+	if username == "" {
+		http.Error(w, "You have to enter a username", http.StatusBadRequest)
+		return
+	}
+	if email == "" || !isValidEmail(email) {
+		http.Error(w, "You have to enter a valid email address", http.StatusBadRequest)
+		return
+		
+	}
+		
+	if password == "" {
+		http.Error(w, "You have to enter a password", http.StatusBadRequest)
+		return
+	}
+	if password != password2 {
+		http.Error(w, "The two passwords do not match", http.StatusBadRequest)
+		return
+	}
+	if userExists(username) {
+		http.Error(w, "The username is already taken", http.StatusBadRequest)
+		return
+	}
+
+	
+}
+
+//Ser om brugere allerede eksisterer
+func userExists(username string) bool {
+	var exists bool
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=?)", username).Scan(&exists)
+	if err != nil && err != sql.ErrNoRows {
+		return true // Antager at brugeren eksisterer ved fejl
+	}
+	return exists
+}
+
+// tjekker om brugeren er logget in
+
+func userIsLoggedIn(r *http.Request) bool {
+	// skal have mere, når login-er implementeret.
+	return false
+}
+
+
+// simpel email validering indtil videre kun med .com. skal udvides. 
+func isValidEmail(email string) bool {
+	return len(email) > 3 && email[len (email)-4:] == ".com"
+}
+
+
+
+
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Security Functions
@@ -410,11 +504,14 @@ func main() {
 	r.HandleFunc("/", rootHandler).Methods("GET")       // Forside
 	r.HandleFunc("/about", aboutHandler).Methods("GET") //about-side
 	r.HandleFunc("/login", login).Methods("GET")		//Login-side
+	r.HandleFunc("/register", registerHandler).Methods("GET")
 
 	// Definerer api-erne
 	r.HandleFunc("/api/login", apiLogin).Methods("POST")
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") 
 	r.HandleFunc("/api/logout", logoutHandler).Methods("GET") 
+	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
+	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
 
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
