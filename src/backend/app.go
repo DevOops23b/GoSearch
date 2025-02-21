@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"golang.org/x/crypto/bcrypt" //Will be added later
+	"golang.org/x/crypto/bcrypt"
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
