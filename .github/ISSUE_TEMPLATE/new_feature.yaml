@@ -1,0 +1,24 @@
+name: Add new feature
+description: "Create an issue for a new feature"
+title: "[feature]: "
+labels: "feature"
+projects: ["DevOops23b WhoKnows Kanban"]
+body:
+- type: checkboxes
+  id: type-of-feature
+  attributes:
+    label: What type of feature is it?
+    description: "What does it invovle? You may select more than one."
+    options:
+      - label: Frontend
+      - label: Backend
+      - label: Database
+      - label: Other
+  validations:
+    required: true    
+- type: textarea
+  attributes:
+    label: Feature description
+    description: "Short description of the new feature."
+  validations:
+    required: true  
