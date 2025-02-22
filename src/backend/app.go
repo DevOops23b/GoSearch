@@ -41,10 +41,11 @@ type User struct {
 }
 
 type PageData struct {
-	User     *User
-	Error    string
-	Title    string
-	Template string
+	User         *User
+	Error        string
+	Title        string
+	Template     string
+	UserLoggedIn bool
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -100,12 +101,21 @@ func closeDB() {
 
 // Viser forside
 func rootHandler(w http.ResponseWriter, r *http.Request) {
+
+	session, _ := store.Get(r, "session-name")
+	userID, ok := session.Values["user_id"]
+
+	data := PageData{
+		Title:        "Home",
+		UserLoggedIn: ok && userID != nil, // Check if user is logged in
+	}
+
 	tmpl, err := template.ParseFiles("../frontend/templates/index.html")
 	if err != nil {
 		http.Error(w, "Error loading index-side", http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, nil)
+	tmpl.Execute(w, data)
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -207,7 +217,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
-
 	// Send data til HTML-templaten
 	tmpl.Execute(w, map[string]interface{}{
 		"Query":   query,
@@ -261,10 +270,24 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "session-name")
-	session.Values["user_id"] = nil
-	session.Options.MaxAge = -1 // Delete session
-	session.Save(r, w)
+	session, err := store.Get(r, "session-name")
+	if err != nil {
+		http.Error(w, "Session error", http.StatusInternalServerError)
+		return
+	}
+
+	if _, ok := session.Values["user_id"]; !ok {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	session.Options.MaxAge = -1 // Expire the session
+	delete(session.Values, "user_id")
+
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Failed to save session", http.StatusInternalServerError)
+		return
+	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

@@ -9,9 +9,12 @@
 
         <nav class="navigation">
             <h1><a id="nav-logo" href="/">¿Who Knows?</a></h1>
-            <a id="nav-logout" href="/api/logout" hidden>Log out</a>
-            <a id="nav-login" href="#">Log in</a>
-            <a id="nav-register" href="#">Register</a>
+            {{ if .UserLoggedIn }}
+                <a id="nav-logout" href="/api/logout">Log out</a>
+            {{ else }}
+                <a id="nav-login" href="#">Log in</a>
+                <a id="nav-register" href="#">Register</a>
+            {{ end }}
         </nav>
         <div>
             {{ block "content" . }}{{ end }}
