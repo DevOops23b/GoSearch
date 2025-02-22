@@ -105,9 +105,9 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session-name")
 	userID, ok := session.Values["user_id"]
 
-	data := PageData{
-		Title:        "Home",
-		UserLoggedIn: ok && userID != nil, // Check if user is logged in
+	data := map[string]any{
+		"Title":        "Home",
+		"UserLoggedIn": ok && userID != nil,
 	}
 
 	tmpl, err := template.ParseFiles("../frontend/templates/index.html")
