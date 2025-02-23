@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"golang.org/x/crypto/bcrypt" //Will be added later
 
@@ -37,6 +38,7 @@ var store = sessions.NewCookieStore([]byte("Very-secret-key"))
 type User struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -46,6 +48,14 @@ type PageData struct {
 	Title        string
 	Template     string
 	UserLoggedIn bool
+}
+
+type Page struct {
+	Title       string    `json:"title"`
+	URL         string    `json:"url"`
+	Language    string    `json:"language"`
+	LastUpdated time.Time `json:"last_updated"`
+	Content     string    `json:"content"`
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -92,6 +102,45 @@ func executeDB(query string, args ...interface{}) (sql.Result, error) {
 func closeDB() {
 	if db != nil {
 		db.Close()
+	}
+}
+func checkTables() {
+	// Check users table
+	fmt.Println("\n--- Users in database ---")
+	rows, err := queryDB("SELECT * FROM users")
+	if err != nil {
+		log.Printf("Error querying users: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var user User
+		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password)
+		if err != nil {
+			log.Printf("Error scanning user: %v", err)
+			continue
+		}
+		fmt.Printf("ID: %d, Username: %s, Email: %s\n", user.ID, user.Username, user.Email)
+	}
+
+	// Check pages table
+	fmt.Println("\n--- Pages in database ---")
+	rows2, err := queryDB("SELECT * FROM pages")
+	if err != nil {
+		log.Printf("Error querying pages: %v", err)
+		return
+	}
+	defer rows2.Close()
+
+	for rows2.Next() {
+		var page Page
+		err := rows2.Scan(&page.Title, &page.URL, &page.Language, &page.LastUpdated, &page.Content)
+		if err != nil {
+			log.Printf("Error scanning page: %v", err)
+			continue
+		}
+		fmt.Printf("Title: %s, URL: %s, Language: %s\n", page.Title, page.URL, page.Language)
 	}
 }
 
@@ -373,6 +422,8 @@ func main() {
 	// initialiserer databasen og forbinder til den.
 	initDB()        // skal udkommenteres under test af search dummy-data
 	defer closeDB() // skal udkommenteres under test af search dummy-data
+
+	checkTables()
 
 	err := db.Ping()
 	if err != nil {
