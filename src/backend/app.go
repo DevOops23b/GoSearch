@@ -198,8 +198,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	var searchResults []map[string]string
 	if query != "" {
 		rows, err := queryDB(
-			"SELECT * FROM pages WHERE language = ? AND content LIKE ?",
-			language, "%"+query+"%")
+			"SELECT title, url, content FROM pages WHERE language = ? AND content LIKE ?",
+			language, "%"+query+"%",
+		)
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
@@ -208,15 +209,15 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 		// SQL-forespørgsel - finder sider i databasen, hvor 'content' matcher 'query'
 		for rows.Next() {
-			var title, url, description string
-			if err := rows.Scan(&title, &url, &description); err != nil {
+			var title, url, content string
+			if err := rows.Scan(&title, &url, &content); err != nil {
 				http.Error(w, "Error reading row", http.StatusInternalServerError)
 				return
 			}
 			searchResults = append(searchResults, map[string]string{
 				"title":       title,
 				"url":         url,
-				"description": description,
+				"description": content,
 			})
 		}
 
