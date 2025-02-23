@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt" //Will be added later
 
@@ -188,7 +189,7 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 // Viser search api-server.
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
-	query := r.URL.Query().Get("q")
+    query := strings.TrimSpace(r.URL.Query().Get("q"))
 	language := r.URL.Query().Get("language")
 	if language == "" {
 		language = "en"
@@ -197,10 +198,14 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Henter query-parameterne
 	var searchResults []map[string]string
 	if query != "" {
+		// Viser hvad der bliver sendt i SQL-forespørgelsen
+		fmt.Printf("Query: %s, Language: %s\n", query, language)
+
 		rows, err := queryDB(
-			"SELECT title, url, content FROM pages WHERE language = ? AND content LIKE ?",
+			"SELECT title, url, content FROM pages WHERE language = ? AND LOWER(title) LIKE LOWER(?)",
 			language, "%"+query+"%",
-		)
+		)		
+			
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
@@ -220,59 +225,21 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 				"description": content,
 			})
 		}
-
 	}
-
 	//indlæser search.htmlmed resultater
 	tmpl, err := template.ParseFiles("../frontend/templates/search.html")
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
-
 	// sender data til html-templaten
 	tmpl.Execute(w, map[string]interface{}{
 		"Query":   query,
 		"Results": searchResults,
 	})
 
-	//Sendte json objekter
-	/*w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"search_results": searchResults,
-	})*/
-
 }
 
-// Med dummydata for at teste endpointsne
-/*func searchHandler(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("q")
-	language := r.URL.Query().Get("language")
-	if language == "" {
-		language = "en"
-	}
-
-	// Dummy data til test
-	searchResults := []map[string]string{
-		{"Title": "Mock Page 1", "URL": "http://test1.com", "Description": "This is a test result 1"},
-		{"Title": "Mock Page 2", "URL": "http://test2.com", "Description": "This is a test result 2"},
-	}
-
-	// Log query til terminalen (for debugging)
-	fmt.Printf("Search query: %s, Language: %s\n", query, language)
-
-	// Indlæs search.html med dummyresultater
-	tmpl, err := template.ParseFiles("../frontend/templates/search.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-	// Send data til HTML-templaten
-	tmpl.Execute(w, map[string]interface{}{
-		"Query":   query,
-		"Results": searchResults,
-	})
-}*/
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Page routes
