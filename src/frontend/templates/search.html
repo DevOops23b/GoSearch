@@ -20,11 +20,11 @@
             {{ if not .Results }}
                 <p>No results found.</p>
             {{ else }}
-                <div id="results">
+                <div id="Results">
                     {{ range .Results }}
                         <div>
-                            <h2><a href="{{ .URL }}" class="search-result-title">{{ .Title }}</a></h2>
-                            <p class="search-result-description">{{ .Description }}</p>
+                            <h2><a href="{{ .url }}" class="search-result-title">{{ .title }}</a></h2>
+                            <p class="search-result-description">{{ .description }}</p>
                         </div>
                     {{ end }}
                 </div>

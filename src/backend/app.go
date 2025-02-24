@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt" //Will be added later
 
@@ -188,8 +189,9 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 // Viser search api-server.
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
-	query := r.URL.Query().Get("q")
+    query := strings.TrimSpace(r.URL.Query().Get("q"))
 	language := r.URL.Query().Get("language")
+
 	if language == "" {
 		language = "en"
 	}
@@ -197,29 +199,35 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Henter query-parameterne
 	var searchResults []map[string]string
 	if query != "" {
+
+		// Viser hvad der bliver sendt i SQL-forespørgelsen
+		fmt.Printf("Query: %s, Language: %s\n", query, language)
+
 		rows, err := queryDB(
-			"SELECT * FROM pages WHERE language = ? AND content LIKE ?",
-			language, "%"+query+"%")
+			"SELECT title, url, content FROM pages WHERE language = ? AND LOWER(title) LIKE LOWER(?)",
+			language, "%"+query+"%",
+		)
+
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
+
 		defer rows.Close()
 
 		// SQL-forespørgsel - finder sider i databasen, hvor 'content' matcher 'query'
 		for rows.Next() {
-			var title, url, description string
-			if err := rows.Scan(&title, &url, &description); err != nil {
+			var title, url, content string
+			if err := rows.Scan(&title, &url, &content); err != nil {
 				http.Error(w, "Error reading row", http.StatusInternalServerError)
 				return
 			}
 			searchResults = append(searchResults, map[string]string{
 				"title":       title,
 				"url":         url,
-				"description": description,
+				"description": content,
 			})
 		}
-
 	}
 
 	//indlæser search.htmlmed resultater
@@ -234,44 +242,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		"Query":   query,
 		"Results": searchResults,
 	})
-
-	//Sendte json objekter
-	/*w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"search_results": searchResults,
-	})*/
-
 }
-
-// Med dummydata for at teste endpointsne
-/*func searchHandler(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("q")
-	language := r.URL.Query().Get("language")
-	if language == "" {
-		language = "en"
-	}
-
-	// Dummy data til test
-	searchResults := []map[string]string{
-		{"Title": "Mock Page 1", "URL": "http://test1.com", "Description": "This is a test result 1"},
-		{"Title": "Mock Page 2", "URL": "http://test2.com", "Description": "This is a test result 2"},
-	}
-
-	// Log query til terminalen (for debugging)
-	fmt.Printf("Search query: %s, Language: %s\n", query, language)
-
-	// Indlæs search.html med dummyresultater
-	tmpl, err := template.ParseFiles("../frontend/templates/search.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-	// Send data til HTML-templaten
-	tmpl.Execute(w, map[string]interface{}{
-		"Query":   query,
-		"Results": searchResults,
-	})
-}*/
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Page routes
@@ -420,8 +391,8 @@ func validatePassword(hashedPassword, inputPassword string) bool {
 
 func main() {
 	// initialiserer databasen og forbinder til den.
-	initDB()        // skal udkommenteres under test af search dummy-data
-	defer closeDB() // skal udkommenteres under test af search dummy-data
+	initDB()
+	defer closeDB()
 
 	checkTables()
 
@@ -434,23 +405,19 @@ func main() {
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
 	r := mux.NewRouter()
+
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET")       // Forside
 	r.HandleFunc("/about", aboutHandler).Methods("GET") //about-side
+	r.HandleFunc("/login", login).Methods("GET")		//Login-side
 
 	// Definerer api-erne
-	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
+	r.HandleFunc("/api/login", apiLogin).Methods("POST")
+	r.HandleFunc("/api/search", searchHandler).Methods("GET") 
+	r.HandleFunc("/api/logout", logoutHandler).Methods("GET") 
 
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
-
-	// Login
-
-	r.HandleFunc("/login", login).Methods("GET")
-	r.HandleFunc("/api/login", apiLogin).Methods("POST")
-
-	//logout
-	r.HandleFunc("/api/logout", logoutHandler).Methods("GET")
 
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.
