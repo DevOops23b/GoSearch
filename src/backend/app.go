@@ -8,8 +8,6 @@ import (
 	"time"
 	"strings"
 
-	"golang.org/x/crypto/bcrypt" //Will be added later
-
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
