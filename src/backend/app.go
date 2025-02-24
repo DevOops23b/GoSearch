@@ -481,7 +481,25 @@ func userIsLoggedIn(r *http.Request) bool {
 
 // simpel email validering indtil videre kun med .com. skal udvides. 
 func isValidEmail(email string) bool {
-	return len(email) > 3 && email[len (email)-4:] == ".com"
+	email = strings.TrimSpace(email) // Fjern mellemrum
+	if !strings.Contains(email, "@") {
+		return false
+	}
+		
+	// Tjek at den ikke starter eller slutter med "@"
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return false
+	}
+
+	validEndings := []string{".com", ".dk", ".net", ".org", ".edu"}
+
+	for _, ending := range validEndings {
+		if strings.HasSuffix(email, ending) {
+			return true
+		}
+	}
+	return false
 }
 
 
