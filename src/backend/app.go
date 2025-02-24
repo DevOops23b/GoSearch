@@ -420,9 +420,7 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if email == "" || !isValidEmail(email) {
 		http.Error(w, "You have to enter a valid email address", http.StatusBadRequest)
 		return
-		
 	}
-		
 	if password == "" {
 		http.Error(w, "You have to enter a password", http.StatusBadRequest)
 		return
@@ -431,25 +429,35 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "The two passwords do not match", http.StatusBadRequest)
 		return
 	}
-	if userExists(username) {
+
+	// Tjek for eksisterende brugernavn og email
+	usernameTaken, emailTaken := userExists(username, email)
+	if usernameTaken {
 		http.Error(w, "The username is already taken", http.StatusBadRequest)
 		return
 	}
 
+	if emailTaken {
+		http.Error(w, "A user with this email already exists", http.StatusBadRequest)
+		return
+	}
+
+	// Hash passwordet
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
 		http.Error(w, "Error hashing password", http.StatusInternalServerError)
 		return
 	}
 
+	// Indsæt brugeren i databasen
 	_, err = db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, hashedPassword)
-	if err!= nil {
-		http.Error(w, "Databse error", http.StatusInternalServerError)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	} 
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
 
-	
+	// Redirect til login-siden
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 //hasher passwordet med bcrypt.
@@ -462,13 +470,22 @@ func hashPassword(password string) (string, error) {
 }
 
 //Ser om brugere allerede eksisterer
-func userExists(username string) bool {
-	var exists bool
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=?)", username).Scan(&exists)
+func userExists(username, email string) (bool, bool) {
+	var usernameExists, emailExists bool
+	
+	// Tjekker for eksisterende brugernavn
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=?)", username).Scan(&usernameExists)
 	if err != nil && err != sql.ErrNoRows {
-		return true // Antager at brugeren eksisterer ved fejl
+		return false, false // Fejl i forespørgslen
 	}
-	return exists
+
+	// Tjekker for eksisterende email
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email=?)", email).Scan(&emailExists)
+	if err != nil && err != sql.ErrNoRows {
+		return false, false // Fejl i forespørgslen
+	}
+
+	return usernameExists, emailExists
 }
 
 // tjekker om brugeren er logget in
