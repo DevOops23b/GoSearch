@@ -525,11 +525,25 @@ func isValidEmail(email string) bool {
 /// Weather handler
 //////////////////////////////////////////////////////////////////////////////////
 
+var cachedWeather = make(map[string]struct {
+	Name 	string
+	Temp 	float64
+	Weather string
+})
+
+
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
 	apiKey := os.Getenv("WEATHER_API_KEY") //SKal sættes i vores miljø-variabler.
 	city := r.URL.Query().Get("city") //henter city, fra query parameter
 	if city == "" {
 		http.Error(w, "City name is required", http.StatusBadRequest)
+		return
+	}
+
+	//Tjekker om 'city'-cachen allerede er i cachen
+	if cachedData, found := cachedWeather[city]; found {
+		//Gør så vi bruger den cachede data
+		renderWeatherTemplate(w, cachedData)
 		return
 	}
 
@@ -547,26 +561,30 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := struct {
-		Name     string
-        Temp     float64
-        Weather  string
-    }{
-        Name:    weather.Name,
-        Temp:    weather.Main.Temp,
-        Weather: weather.Weather[0].Description,
+	cachedWeather[city] = struct{Name string; Temp float64; Weather string}{
+		Name: weather.Name,
+		Temp: weather.Main.Temp,
+		Weather: weather.Weather[0].Description,
 	}
 
-	tmpl, err := template.ParseFiles("../frontend/templates/weather.html")
-    if err != nil {
-        http.Error(w, "Error loading weather template", http.StatusInternalServerError)
-        return
-    }
+	renderWeatherTemplate(w, cachedWeather[city])
+}
 
-    // Render skabelonen med vejrinformationen
-    if err := tmpl.Execute(w, data); err != nil {
-        http.Error(w, "Error rendering weather template", http.StatusInternalServerError)
-    }
+func renderWeatherTemplate(w http.ResponseWriter, data struct {
+	Name    string
+	Temp    float64
+	Weather string
+}) {
+	
+	tmpl, err := template.ParseFiles("../frontend/templates/weather.html")
+	if err != nil {
+		http.Error(w, "Error loading weather template", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Error rendering weather template", http.StatusInternalServerError)
+	}
 
 }
 
