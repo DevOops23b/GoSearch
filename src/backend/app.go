@@ -378,12 +378,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
 }
-	// Send data til HTML-templaten
-	tmpl.Execute(w, map[string]interface{}{
-		"Query":   query,
-		"Results": searchResults,
-	})
-}*/
+
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Register handlers
