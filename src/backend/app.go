@@ -493,8 +493,13 @@ func userExists(username, email string) (bool, bool) {
 // tjekker om brugeren er logget in
 
 func userIsLoggedIn(r *http.Request) bool {
-	// skal have mere, når login-er implementeret.
-	return false
+	session, err := store.Get(r, "session-name")
+	if err != nil {
+		return false 
+	}
+
+	userID, ok := session.Values["user_id"]
+	return ok && userID != nil
 }
 
 
@@ -575,7 +580,7 @@ func renderWeatherTemplate(w http.ResponseWriter, data struct {
 	Temp    float64
 	Weather string
 }) {
-	
+
 	tmpl, err := template.ParseFiles("../frontend/templates/weather.html")
 	if err != nil {
 		http.Error(w, "Error loading weather template", http.StatusInternalServerError)
