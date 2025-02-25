@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/bcrypt" //Will be added later
 
+	
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
@@ -17,6 +17,9 @@ import (
 
 	// en router til http-requests
 	"github.com/gorilla/mux"
+
+	//Til at hashe passwords
+	"golang.org/x/crypto/bcrypt"
 
 	// Database-connection. Go undersøtter ikke SQLite, og derfor skal vi importere en driver
 	_ "github.com/mattn/go-sqlite3"
@@ -375,6 +378,152 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 
 }
 
+
+//////////////////////////////////////////////////////////////////////////////////
+/// Register handlers
+//////////////////////////////////////////////////////////////////////////////////
+
+// viser registreringssiden.
+func registerHandler(w http.ResponseWriter, r *http.Request) {
+	if userIsLoggedIn(r) {
+		http.Redirect(w, r, "/search", http.StatusFound)
+		return
+	}
+	tmpl, err := template.ParseFiles("../frontend/templates/register.html")
+	if err != nil {
+		http.Error(w, "Error loading register page", http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, nil)
+}
+
+//Håndterer registreringsprocessen
+func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
+	if userIsLoggedIn(r) {
+		http.Redirect(w, r, "/search", http.StatusFound)
+		return
+	}
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid data", http.StatusBadRequest)
+		return
+	}
+
+	username := r.FormValue("username")
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+	password2 := r.FormValue("password2")
+
+	if username == "" {
+		http.Error(w, "You have to enter a username", http.StatusBadRequest)
+		return
+	}
+	if email == "" || !isValidEmail(email) {
+		http.Error(w, "You have to enter a valid email address", http.StatusBadRequest)
+		return
+	}
+	if password == "" {
+		http.Error(w, "You have to enter a password", http.StatusBadRequest)
+		return
+	}
+	if password != password2 {
+		http.Error(w, "The two passwords do not match", http.StatusBadRequest)
+		return
+	}
+
+	// Tjek for eksisterende brugernavn og email
+	usernameTaken, emailTaken := userExists(username, email)
+	if usernameTaken {
+		http.Error(w, "The username is already taken", http.StatusBadRequest)
+		return
+	}
+
+	if emailTaken {
+		http.Error(w, "A user with this email already exists", http.StatusBadRequest)
+		return
+	}
+
+	// Hash passwordet
+	hashedPassword, err := hashPassword(password)
+	if err != nil {
+		http.Error(w, "Error hashing password", http.StatusInternalServerError)
+		return
+	}
+
+	// Indsæt brugeren i databasen
+	_, err = db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, hashedPassword)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	} 
+
+	// Redirect til login-siden
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+//hasher passwordet med bcrypt.
+func hashPassword(password string) (string, error) {
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedBytes), nil
+}
+
+//Ser om brugere allerede eksisterer
+func userExists(username, email string) (bool, bool) {
+	var usernameExists, emailExists bool
+	
+	// Tjekker for eksisterende brugernavn
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=?)", username).Scan(&usernameExists)
+	if err != nil && err != sql.ErrNoRows {
+		return false, false // Fejl i forespørgslen
+	}
+
+	// Tjekker for eksisterende email
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email=?)", email).Scan(&emailExists)
+	if err != nil && err != sql.ErrNoRows {
+		return false, false // Fejl i forespørgslen
+	}
+
+	return usernameExists, emailExists
+}
+
+// tjekker om brugeren er logget in
+
+func userIsLoggedIn(r *http.Request) bool {
+	// skal have mere, når login-er implementeret.
+	return false
+}
+
+
+// simpel email validering indtil videre kun med .com. skal udvides. 
+func isValidEmail(email string) bool {
+	email = strings.TrimSpace(email) // Fjern mellemrum
+	if !strings.Contains(email, "@") {
+		return false
+	}
+		
+	// Tjek at den ikke starter eller slutter med "@"
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return false
+	}
+
+	validEndings := []string{".com", ".dk", ".net", ".org", ".edu"}
+
+	for _, ending := range validEndings {
+		if strings.HasSuffix(email, ending) {
+			return true
+		}
+	}
+	return false
+}
+
+
+
+
+
 //////////////////////////////////////////////////////////////////////////////////
 /// Security Functions
 //////////////////////////////////////////////////////////////////////////////////
@@ -409,12 +558,15 @@ func main() {
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET")       // Forside
 	r.HandleFunc("/about", aboutHandler).Methods("GET") //about-side
-	r.HandleFunc("/login", login).Methods("GET")        //Login-side
+	r.HandleFunc("/login", login).Methods("GET")		//Login-side
+	r.HandleFunc("/register", registerHandler).Methods("GET")
 
 	// Definerer api-erne
 	r.HandleFunc("/api/login", apiLogin).Methods("POST")
-	r.HandleFunc("/api/search", searchHandler).Methods("GET")
-	r.HandleFunc("/api/logout", logoutHandler).Methods("GET")
+	r.HandleFunc("/api/search", searchHandler).Methods("GET") 
+	r.HandleFunc("/api/logout", logoutHandler).Methods("GET") 
+	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
+	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
 
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
