@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 	"strings"
+	"time"
 
+
+	
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
@@ -190,7 +192,7 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 // Viser search api-server.
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
-    query := strings.TrimSpace(r.URL.Query().Get("q"))
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	language := r.URL.Query().Get("language")
 
 	if language == "" {
@@ -318,50 +320,45 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 //////////////////////////////////////////////////////////////////////////////////
 
 func apiLogin(w http.ResponseWriter, r *http.Request) {
-	/*
-		data := map[string]interface{} {
-			"Error": "", // default error message
-		}
 
-	*/
+	data := PageData {
+		Title: "Log in",
+		Template: "login",
+		Error: "Invalid username or password",
+	}
 
 	err := r.ParseForm()
 	if err != nil {
-		http.Error(w, "Invalid request!!!", http.StatusBadRequest)
+		http.Error(w, "Invalid request!", http.StatusBadRequest)
 		return
 	}
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
+	// Checks that username and password are not empty strings
+	if username == "" || password == "" {
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Error rendering template: %v", err)
+			http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		}
+		return
+	}
+
+
 	var user User
 
+	// Finds the user in the db based on the username
 	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = ?", username).Scan(&user.ID, &user.Username, &user.Password)
 
-	if err != nil {
-		data := PageData{Error: "Invalid username"}
-		tmpl.ExecuteTemplate(w, "login.html", data)
-		//http.Error(w, "Invalid username or password", http.StatusUnauthorized)
-		return
-	}
+	// If the username is not found in th db or password is incorrect
+	if err != nil || !validatePassword(user.Password, password) {
+		data := PageData{Error: "Invalid username or password"}
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Error rendering template: %v", err)
+			http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		}
 
-	validated := validatePassword(user.Password, password)
-
-	if validated == false {
-		data := PageData{Error: "Invalid password"}
-		tmpl.ExecuteTemplate(w, "login.html", data)
-		return
-	}
-
-	if username == "" || password == "" {
-		data := PageData{Error: "Please enter both username and password"}
-		tmpl.ExecuteTemplate(w, "login.html", data)
-	}
-
-	if user.Password != password {
-		data := PageData{Error: "Invalid password"}
-		w.WriteHeader(http.StatusUnauthorized)
-		tmpl.ExecuteTemplate(w, "login.html", data)
 		return
 	}
 
@@ -371,7 +368,11 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session.Values["user_id"] = user.ID
-	session.Save(r, w)
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Session save failed: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
@@ -528,6 +529,7 @@ func isValidEmail(email string) bool {
 //////////////////////////////////////////////////////////////////////////////////
 
 func validatePassword(hashedPassword, inputPassword string) bool {
+
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(inputPassword))
 	return err == nil
 }
