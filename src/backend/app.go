@@ -8,6 +8,7 @@ import (
 	"time"
 	"strings"
 
+
 	
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
