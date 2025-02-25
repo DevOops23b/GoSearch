@@ -1,0 +1,19 @@
+.form-group {
+    display: flex;
+    align-items: center; /* Vertikal centering */
+    margin-bottom: 10px; /* Afstand mellem grupperne */
+}
+
+.form-group label {
+    width: 5%; /* Juster denne værdi efter behov */
+    margin-right: 3px; /* Afstand mellem label og input */
+}
+
+.form-group input {
+    flex-grow: 1; /* Input tager den resterende plads */
+}
+
+button {
+    display: block;
+    margin: 20px auto;
+}

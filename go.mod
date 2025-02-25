@@ -14,3 +14,5 @@ require (
 	github.com/gorilla/securecookie v1.1.2 // indirect
 
 )
+
+require github.com/mattn/go-sqlite3 v1.14.24
