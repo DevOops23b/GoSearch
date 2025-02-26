@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-
-	
 	//Tilføjet disse pakker grundet search funktion
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
@@ -99,9 +97,10 @@ func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
 
+/*nolint:unused
 func executeDB(query string, args ...interface{}) (sql.Result, error) {
-	return db.Exec(query, args...)
-}
+    return db.Exec(query, args...)
+}*/
 
 func closeDB() {
 	if db != nil {
@@ -168,7 +167,10 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error loading index-side", http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, data)
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +184,10 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error loading about-side", http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, nil)
+	if err := tmpl.Execute(w, nil); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -241,10 +246,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// sender data til html-templaten
-	tmpl.Execute(w, map[string]interface{}{
+	if err := tmpl.Execute(w, map[string]interface{}{
 		"Query":   query,
 		"Results": searchResults,
-	})
+	}); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -321,10 +329,10 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 func apiLogin(w http.ResponseWriter, r *http.Request) {
 
-	data := PageData {
-		Title: "Log in",
+	data := PageData{
+		Title:    "Log in",
 		Template: "login",
-		Error: "Invalid username or password",
+		Error:    "Invalid username or password",
 	}
 
 	err := r.ParseForm()
@@ -344,7 +352,6 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 
 	var user User
 
@@ -378,7 +385,6 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 
 }
 
-
 //////////////////////////////////////////////////////////////////////////////////
 /// Register handlers
 //////////////////////////////////////////////////////////////////////////////////
@@ -394,10 +400,14 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error loading register page", http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, nil)
+
+	if err := tmpl.Execute(w, nil); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
 }
 
-//Håndterer registreringsprocessen
+// Håndterer registreringsprocessen
 func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if userIsLoggedIn(r) {
 		http.Redirect(w, r, "/search", http.StatusFound)
@@ -455,13 +465,13 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
-	} 
+	}
 
 	// Redirect til login-siden
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-//hasher passwordet med bcrypt.
+// hasher passwordet med bcrypt.
 func hashPassword(password string) (string, error) {
 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -470,10 +480,10 @@ func hashPassword(password string) (string, error) {
 	return string(hashedBytes), nil
 }
 
-//Ser om brugere allerede eksisterer
+// Ser om brugere allerede eksisterer
 func userExists(username, email string) (bool, bool) {
 	var usernameExists, emailExists bool
-	
+
 	// Tjekker for eksisterende brugernavn
 	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=?)", username).Scan(&usernameExists)
 	if err != nil && err != sql.ErrNoRows {
@@ -496,14 +506,13 @@ func userIsLoggedIn(r *http.Request) bool {
 	return false
 }
 
-
-// simpel email validering indtil videre kun med .com. skal udvides. 
+// simpel email validering indtil videre kun med .com. skal udvides.
 func isValidEmail(email string) bool {
 	email = strings.TrimSpace(email) // Fjern mellemrum
 	if !strings.Contains(email, "@") {
 		return false
 	}
-		
+
 	// Tjek at den ikke starter eller slutter med "@"
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
@@ -519,10 +528,6 @@ func isValidEmail(email string) bool {
 	}
 	return false
 }
-
-
-
-
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Security Functions
@@ -558,13 +563,13 @@ func main() {
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET")       // Forside
 	r.HandleFunc("/about", aboutHandler).Methods("GET") //about-side
-	r.HandleFunc("/login", login).Methods("GET")		//Login-side
+	r.HandleFunc("/login", login).Methods("GET")        //Login-side
 	r.HandleFunc("/register", registerHandler).Methods("GET")
 
 	// Definerer api-erne
 	r.HandleFunc("/api/login", apiLogin).Methods("POST")
-	r.HandleFunc("/api/search", searchHandler).Methods("GET") 
-	r.HandleFunc("/api/logout", logoutHandler).Methods("GET") 
+	r.HandleFunc("/api/search", searchHandler).Methods("GET")
+	r.HandleFunc("/api/logout", logoutHandler).Methods("GET")
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
 	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
 
