@@ -13,73 +13,6 @@ import (
     "github.com/stretchr/testify/assert"
 )
 
-
-// Test function signature:
-// func TestName(t *testing.T)
-
-// Mock user for testing
-/*
-type mockDB struct {}
-
-type mockRow struct {
-    error error
-}
-
-func (r *mockRow) Scan(dest...interface{}) error {
-    return r.error
-}
-
-
-
-func (mdb *mockDB) QueryRow(query string, args ... interface{}) *mockRow {
-    if args[0] == "validUser" && args[1] == "validPassword" {
-        return &mockRow{error: nil}
-    }
-    return &mockRow{error: errors.New("Nothing to find here")}
-}
-
-// Login
-func TestLoginSuccess(t *testing.T) {
-    store := sessions.NewCookieStore([]byte("test-secret"))
-    requestBody := map[string]string{
-        "username": "validUser",
-        "password": "validPassword",
-    }
-    body, _ := json.Marshal(requestBody)
-    request := httptest.NewRequest("POST", "/api/login", bytes.NewBuffer(body))
-    request.Header.Set("Content-Type", "application/json")
-    w := httptest.NewRecorder()
-
-    ApiLogin(w, request)
-
-    res := w.Result()
-
-    defer res.Body.Close()
-
-    if res.StatusCode != http.StatusOK {
-        t.Errorf("Expected status 200 but got %v", res.StatusCode)
-    }
-
-    cookie := res.Cookies()
-    if len(cookie) == 0 {
-        t.Errorf("Expected to find a cookie, but found none")
-    }
-
-}
-
-// Test failed login
-
-func TestLoginFailed(t *testing.T) {
-    store := sessions.NewCookieStore([]byte("test-secret"))
-    requestBody := map[string]string {
-        "username": "invalidUser",
-        "password": "wrongPassword",
-    }
-
-
-}
-*/
-
 // Helper function to create a mock database
 func setupMockDB() (*sql.DB, sqlmock.Sqlmock) {
     mockDB, mock, err := sqlmock.New()
@@ -127,18 +60,43 @@ func TestLoginSuccess(t *testing.T) {
 
 }
 
-/*
+
 // Failed login
 func TestFailedLogin(t *testing.T) {
     testCases := []struct {
-        name        string
-        username    string
-        password    string
-
-
+        name            string
+        username        string
+        password        string
+        mockSetup       func(mock sqlmock.Sqlmock)
+        expectedStatus  int
+    } {
+        {
+        name:           "Empty Username",
+        username:       "",
+        password:       "testPassword",
+        mockSetup:      func(mock sqlmock.Sqlmock) {},
+        expectedStatus: http.StatusInternalServerError,
+    },
+    {
+        name:           "Empty password",
+        username:       "testUser",
+        password:       "",
+        mockSetup:      func(mock sqlmock.Sqlmock) {},
+        expectedStatus: http.StatusInternalServerError,
+    },
+    {
+        name:           "Incorrect password",
+        username:       "testUser",
+        password:       "invalidPassword",
+        mockSetup:      func(mock sqlmock.Sqlmock) {
+            hashedPassword, err := bcrypt.GenerateFromPassword([]byte("validPassword"), bcrypt.DefaultCost)
+            mock.ExpectQuery("SELECT id, username, password FROM users WHERE username = ?").WithArgs("testUser").
+            
+        },
+        expectedStatus: 
     }
 }
-    */
+}
 
 
 
