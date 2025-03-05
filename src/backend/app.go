@@ -599,6 +599,26 @@ func isValidEmail(email string) bool {
 /// Weather handler
 //////////////////////////////////////////////////////////////////////////////////
 
+func loadWeatherData() (map[string]struct{Name string; Temp float64; Weather string}, error) {
+	file, err := os.Open("../weather_data.json")
+	if err != nil {
+		return nil, fmt.Errorf("error opening weather data file: %v", err)
+	}
+	defer file.Close()
+
+	var weatherData map[string]struct {
+		Name    string
+		Temp    float64
+		Weather string
+	}
+	err = json.NewDecoder(file).Decode(&weatherData)
+	if err != nil {
+		return nil, err
+	}
+	return weatherData, nil
+}
+
+
 var cachedWeather = make(map[string]struct {
 	Name 	string
 	Temp 	float64
@@ -607,42 +627,57 @@ var cachedWeather = make(map[string]struct {
 
 
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
-	apiKey := os.Getenv("WEATHER_API_KEY") //SKal sættes i vores miljø-variabler.
-	city := r.URL.Query().Get("city") //henter city, fra query parameter
+	apiKey := os.Getenv("WEATHER_API_KEY") 
+	city := r.URL.Query().Get("city")
+
 	if city == "" {
 		http.Error(w, "City name is required", http.StatusBadRequest)
 		return
 	}
 
-	//Tjekker om 'city'-cachen allerede er i cachen
+	// Tjek cache først
 	if cachedData, found := cachedWeather[city]; found {
-		//Gør så vi bruger den cachede data
 		renderWeatherTemplate(w, cachedData)
 		return
 	}
 
+	// Forsøg at hente data fra API
 	url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric", city, apiKey)
 	resp, err := http.Get(url)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		http.Error(w, "Failed to fetch weather data", http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
+	if err == nil && resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
 
-	var weather WeatherResponse
-	if err := json.NewDecoder(resp.Body).Decode(&weather); err != nil {
-		http.Error(w, "Error decoding weather data", http.StatusInternalServerError)
-		return
+		var weather WeatherResponse
+		if err := json.NewDecoder(resp.Body).Decode(&weather); err == nil {
+			// Opdater cache med API-data
+			cachedWeather[city] = struct {
+				Name    string
+				Temp    float64
+				Weather string
+			}{
+				Name:    weather.Name,
+				Temp:    weather.Main.Temp,
+				Weather: weather.Weather[0].Description,
+			}
+
+			renderWeatherTemplate(w, cachedWeather[city])
+			return
+		}
 	}
 
-	cachedWeather[city] = struct{Name string; Temp float64; Weather string}{
-		Name: weather.Name,
-		Temp: weather.Main.Temp,
-		Weather: weather.Weather[0].Description,
+	// Hvis API'en fejler, forsøg at hente data fra lokal JSON-fil
+	weatherData, err := loadWeatherData()
+	if err == nil {
+		if localWeather, found := weatherData[city]; found {
+			renderWeatherTemplate(w, localWeather)
+			return
+		}
 	}
 
-	renderWeatherTemplate(w, cachedWeather[city])
+	// Hvis alt fejler, returner en fejl
+	http.Error(w, "Failed to fetch weather data", http.StatusInternalServerError)
 }
+
 
 func renderWeatherTemplate(w http.ResponseWriter, data struct {
 	Name    string
