@@ -8,8 +8,7 @@ import (
 	"strings"
 	"time"
 
-	//Tilføjet disse pakker grundet search funktion
-	//"encoding/json" // Gør at vi kan læse json-format
+	"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
 	"net/http"      // til http-servere og håndtering af routere
 
@@ -26,7 +25,7 @@ import (
 )
 
 ///////////////////////////////////////////////////////////////////////////////////
-/// Database Functions
+/// Configurations
 ///////////////////////////////////////////////////////////////////////////////////
 
 const (
@@ -58,6 +57,17 @@ type Page struct {
 	Language    string    `json:"language"`
 	LastUpdated time.Time `json:"last_updated"`
 	Content     string    `json:"content"`
+}
+
+type WeatherResponse struct {
+	Name 		string    `jason:"name"`
+	Main 		struct {
+		Temp float64 	  `json:"temp"`
+	} `json:"main"`
+	Weather []struct {
+		Description string `json:"description"`
+	} `json:"weather"`
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -263,7 +273,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-/// Page routes
+/// Login/Logout Handlers ???
 //////////////////////////////////////////////////////////////////////////////////
 
 var tmpl = template.Must(template.ParseFiles("../frontend/templates/layout.html", "../frontend/templates/login.html"))
@@ -331,7 +341,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
-/// API routes
+/// Login Handlers
 //////////////////////////////////////////////////////////////////////////////////
 
 func apiLogin(w http.ResponseWriter, r *http.Request) {
@@ -529,14 +539,6 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-// hasher passwordet med bcrypt.
-func hashPassword(password string) (string, error) {
-	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(hashedBytes), nil
-}
 
 // Ser om brugere allerede eksisterer
 func userExists(username, email string) (bool, bool) {
@@ -594,8 +596,120 @@ func isValidEmail(email string) bool {
 }
 
 //////////////////////////////////////////////////////////////////////////////////
+/// Weather handler
+//////////////////////////////////////////////////////////////////////////////////
+
+func loadWeatherData() (map[string]struct{Name string; Temp float64; Weather string}, error) {
+	file, err := os.Open("../weather_data.json")
+	if err != nil {
+		return nil, fmt.Errorf("error opening weather data file: %v", err)
+	}
+	defer file.Close()
+
+	var weatherData map[string]struct {
+		Name    string
+		Temp    float64
+		Weather string
+	}
+	err = json.NewDecoder(file).Decode(&weatherData)
+	if err != nil {
+		return nil, err
+	}
+	return weatherData, nil
+}
+
+
+var cachedWeather = make(map[string]struct {
+	Name 	string
+	Temp 	float64
+	Weather string
+})
+
+
+func weatherHandler(w http.ResponseWriter, r *http.Request) {
+	apiKey := os.Getenv("WEATHER_API_KEY") 
+	city := r.URL.Query().Get("city")
+
+	if city == "" {
+		http.Error(w, "City name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Tjek cache først
+	if cachedData, found := cachedWeather[city]; found {
+		renderWeatherTemplate(w, cachedData)
+		return
+	}
+
+	// Forsøg at hente data fra API
+	url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric", city, apiKey)
+	resp, err := http.Get(url)
+	if err == nil && resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
+
+		var weather WeatherResponse
+		if err := json.NewDecoder(resp.Body).Decode(&weather); err == nil {
+			// Opdater cache med API-data
+			cachedWeather[city] = struct {
+				Name    string
+				Temp    float64
+				Weather string
+			}{
+				Name:    weather.Name,
+				Temp:    weather.Main.Temp,
+				Weather: weather.Weather[0].Description,
+			}
+
+			renderWeatherTemplate(w, cachedWeather[city])
+			return
+		}
+	}
+
+	// Hvis API'en fejler, forsøg at hente data fra lokal JSON-fil
+	weatherData, err := loadWeatherData()
+	if err == nil {
+		if localWeather, found := weatherData[city]; found {
+			renderWeatherTemplate(w, localWeather)
+			return
+		}
+	}
+
+	// Hvis alt fejler, returner en fejl
+	http.Error(w, "Failed to fetch weather data", http.StatusInternalServerError)
+}
+
+
+func renderWeatherTemplate(w http.ResponseWriter, data struct {
+	Name    string
+	Temp    float64
+	Weather string
+}) {
+
+	tmpl, err := template.ParseFiles("../frontend/templates/weather.html")
+	if err != nil {
+		http.Error(w, "Error loading weather template", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Error rendering weather template", http.StatusInternalServerError)
+	}
+
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////
 /// Security Functions
 //////////////////////////////////////////////////////////////////////////////////
+
+//hasher passwordet med bcrypt.
+func hashPassword(password string) (string, error) {
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedBytes), nil
+}
 
 func validatePassword(hashedPassword, inputPassword string) bool {
 
@@ -627,8 +741,8 @@ func main() {
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET")       // Forside
 	r.HandleFunc("/about", aboutHandler).Methods("GET") //about-side
-	r.HandleFunc("/login", login).Methods("GET")        //Login-side
-	r.HandleFunc("/register", registerHandler).Methods("GET")
+	r.HandleFunc("/login", login).Methods("GET")		//Login-side
+	r.HandleFunc("/register", registerHandler).Methods("GET") //Register-side
 
 	// Definerer api-erne
 	r.HandleFunc("/api/login", apiLogin).Methods("POST")
@@ -636,6 +750,8 @@ func main() {
 	r.HandleFunc("/api/logout", logoutHandler).Methods("GET")
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
 	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
+	r.HandleFunc("/api/weather", weatherHandler).Methods("GET") //weather-side
+
 
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))

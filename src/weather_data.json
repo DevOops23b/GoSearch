@@ -1,0 +1,97 @@
+{
+    "København": {
+        "Name": "København",
+        "Temp": 5.4,
+        "Weather": "Klar himmel"
+    },
+    "Aarhus": {
+        "Name": "Aarhus",
+        "Temp": 3.2,
+        "Weather": "Lettere regn"
+    },
+    "Odense": {
+        "Name": "Odense",
+        "Temp": 6.1,
+        "Weather": "Overskyet"
+    },
+    "New York": {
+        "Name": "New York",
+        "Temp": 10.2,
+        "Weather": "Delvis overskyet"
+    },
+    "London": {
+        "Name": "London",
+        "Temp": 8.3,
+        "Weather": "Skyet"
+    },
+    "Paris": {
+        "Name": "Paris",
+        "Temp": 12.7,
+        "Weather": "Lettere regn"
+    },
+    "Berlin": {
+        "Name": "Berlin",
+        "Temp": 4.5,
+        "Weather": "Klar himmel"
+    },
+    "Tokyo": {
+        "Name": "Tokyo",
+        "Temp": 15.8,
+        "Weather": "Solrigt"
+    },
+    "Sydney": {
+        "Name": "Sydney",
+        "Temp": 22.3,
+        "Weather": "Delvis overskyet"
+    },
+    "Rom": {
+        "Name": "Rom",
+        "Temp": 18.9,
+        "Weather": "Klar himmel"
+    },
+    "Moskva": {
+        "Name": "Moskva",
+        "Temp": -2.1,
+        "Weather": "Sne"
+    },
+    "Beijing": {
+        "Name": "Beijing",
+        "Temp": 5.0,
+        "Weather": "Tåget"
+    },
+    "Buenos Aires": {
+        "Name": "Buenos Aires",
+        "Temp": 20.4,
+        "Weather": "Klar himmel"
+    },
+    "Mexico": {
+        "Name": "Mexico",
+        "Temp": 16.3,
+        "Weather": "Overskyet"
+    },
+    "Cape Town": {
+        "Name": "Cape Town",
+        "Temp": 17.5,
+        "Weather": "Delvis overskyet"
+    },
+    "Seoul": {
+        "Name": "Seoul",
+        "Temp": 9.3,
+        "Weather": "Lettere regn"
+    },
+    "Dubai": {
+        "Name": "Dubai",
+        "Temp": 28.6,
+        "Weather": "Solrigt"
+    },
+    "Los Angeles": {
+        "Name": "Los Angeles",
+        "Temp": 18.4,
+        "Weather": "Klar himmel"
+    },
+    "Hong Kong": {
+        "Name": "Hong Kong",
+        "Temp": 21.1,
+        "Weather": "Delvis overskyet"
+    }
+}
