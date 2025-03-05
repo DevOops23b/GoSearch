@@ -344,7 +344,11 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			Error:    "Invalid username or password",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		tmpl.ExecuteTemplate(w, "layout.html", data)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}		
 
@@ -360,7 +364,11 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			Error:		"Username and password cannot be empty",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		tmpl.ExecuteTemplate(w, "layout.html", data)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 
@@ -377,7 +385,11 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			Error:		"Incorrect username or password",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		tmpl.ExecuteTemplate(w, "layout.html", data)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 
@@ -388,7 +400,11 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			Error:		"Internal server error",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		tmpl.ExecuteTemplate(w, "layout.html", data)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	session, err := store.Get(r, "session-name")
@@ -399,7 +415,11 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			Error:		"Session error",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		tmpl.ExecuteTemplate(w, "layout.html", data)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 
@@ -411,7 +431,11 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			Error:		"Session save error",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		tmpl.ExecuteTemplate(w, "layout.html", data)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 
