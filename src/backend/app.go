@@ -357,7 +357,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 		data := PageData {
 			Title:		"Log in",
 			Template:	"login.html",
-			Error:		"Username and password are not allowed to be empty",
+			Error:		"Username and password cannot be empty",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		tmpl.ExecuteTemplate(w, "layout.html", data)
