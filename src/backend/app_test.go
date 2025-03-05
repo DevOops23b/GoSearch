@@ -147,6 +147,53 @@ for _, tc := range testCases {
 
 }
 
+// Logout test
+func TestLogout(t *testing.T) {
+
+    // Create a mock session store
+    mockStore := sessions.NewCookieStore([]byte("secret-test-key"))
+
+    store = mockStore
+
+    // Create a mock request
+    req, err := http.NewRequest("GET", "/api/logout", nil)
+    assert.NoError(t, err)
+
+    // Create response recorder
+    w := httptest.NewRecorder()
+
+    // Create session with logged in user
+    session, err := store.Get(req, "session-name")
+    assert.NoError(t, err)
+
+    // Add user id
+    session.Values["user_id"] = 1
+
+    // Save session
+    err = session.Save(req, w)
+    assert.NoError(t, err)
+
+    // Call logout function
+    logoutHandler(w, req)
+
+    // Get the result
+    response := w.Result()
+
+    // Check the status code
+    assert.Equal(t, http.StatusSeeOther, response.StatusCode, "Redirect is expected")
+
+    // Get the updated session
+    updatedSession, err := store.Get(req, "session-name")
+    assert.NoError(t, err)
+
+    // Check that the user id is gone
+    _, ok := updatedSession.Values["user_id"]
+    assert.False(t, ok, "User id should no longer exist in a session")
+
+    // Check that session is set to expire
+    assert.Equal(t, -1, updatedSession.Options.MaxAge, "Session should be set to expire")
+}
+
 
 
 
