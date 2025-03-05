@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 	"strings"
+	"time"
 
 	"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
@@ -24,9 +24,9 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-//////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
 /// Configurations
-//////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
 
 const (
 	DATABASE_PATH = "../whoknows.db"
@@ -107,9 +107,10 @@ func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
 
+/*nolint:unused
 func executeDB(query string, args ...interface{}) (sql.Result, error) {
-	return db.Exec(query, args...)
-}
+    return db.Exec(query, args...)
+}*/
 
 func closeDB() {
 	if db != nil {
@@ -176,7 +177,10 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error loading index-side", http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, data)
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -185,12 +189,22 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 // Viser about-siden
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "session-name")
+	userID, ok := session.Values["user_id"]
+
+	data := map[string]interface{}{
+		"UserLoggedIn": ok && userID != nil,
+	}
+
 	tmpl, err := template.ParseFiles("../frontend/templates/about.html")
 	if err != nil {
 		http.Error(w, "Error loading about-side", http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, nil)
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -200,7 +214,7 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 // Viser search api-server.
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
-    query := strings.TrimSpace(r.URL.Query().Get("q"))
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	language := r.URL.Query().Get("language")
 
 	if language == "" {
@@ -249,10 +263,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// sender data til html-templaten
-	tmpl.Execute(w, map[string]interface{}{
+	if err := tmpl.Execute(w, map[string]interface{}{
 		"Query":   query,
 		"Results": searchResults,
-	})
+	}); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -328,65 +345,113 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 //////////////////////////////////////////////////////////////////////////////////
 
 func apiLogin(w http.ResponseWriter, r *http.Request) {
-	/*
-		data := map[string]interface{} {
-			"Error": "", // default error message
-		}
-
-	*/
 
 	err := r.ParseForm()
 	if err != nil {
-		http.Error(w, "Invalid request!!!", http.StatusBadRequest)
+		data := PageData{
+			Title:    "Log in",
+			Template: "login",
+			Error:    "Invalid username or password",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
-	}
+	}		
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
+	// Checks that username and password are not empty strings
+	if username == "" || password == "" {
+		
+		data := PageData {
+			Title:		"Log in",
+			Template:	"login.html",
+			Error:		"Username and password cannot be empty",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+
 	var user User
 
+	// Finds the user in the db based on the username
 	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = ?", username).Scan(&user.ID, &user.Username, &user.Password)
 
+	// If the username is not found in th db or password is incorrect
+	if err == sql.ErrNoRows || !validatePassword(user.Password, password) {
+		data := PageData {
+			Title: 		"Log in",
+			Template:	"login.html",
+			Error:		"Incorrect username or password",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+
 	if err != nil {
-		data := PageData{Error: "Invalid username"}
-		tmpl.ExecuteTemplate(w, "login.html", data)
-		//http.Error(w, "Invalid username or password", http.StatusUnauthorized)
-		return
-	}
-
-	validated := validatePassword(user.Password, password)
-
-	if validated == false {
-		data := PageData{Error: "Invalid password"}
-		tmpl.ExecuteTemplate(w, "login.html", data)
-		return
-	}
-
-	if username == "" || password == "" {
-		data := PageData{Error: "Please enter both username and password"}
-		tmpl.ExecuteTemplate(w, "login.html", data)
-	}
-
-	if user.Password != password {
-		data := PageData{Error: "Invalid password"}
-		w.WriteHeader(http.StatusUnauthorized)
-		tmpl.ExecuteTemplate(w, "login.html", data)
-		return
+		data := PageData {
+			Title:		"Log in",
+			Template:	"login.html",
+			Error:		"Internal server error",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		data := PageData {
+			Title:		"Log in",
+			Template:	"login.html",
+			Error:		"Session error",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
+
 	session.Values["user_id"] = user.ID
-	session.Save(r, w)
+	if err := session.Save(r, w); err != nil {
+		data := PageData {
+			Title:		"Log in",
+			Template:	"login.html",
+			Error:		"Session save error",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		return
+	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
 }
-
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Register handlers
@@ -403,10 +468,14 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error loading register page", http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, nil)
+
+	if err := tmpl.Execute(w, nil); err != nil {
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	}
 }
 
-//Håndterer registreringsprocessen
+// Håndterer registreringsprocessen
 func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if userIsLoggedIn(r) {
 		http.Redirect(w, r, "/search", http.StatusFound)
@@ -464,17 +533,17 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
-	} 
+	}
 
 	// Redirect til login-siden
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 
-//Ser om brugere allerede eksisterer
+// Ser om brugere allerede eksisterer
 func userExists(username, email string) (bool, bool) {
 	var usernameExists, emailExists bool
-	
+
 	// Tjekker for eksisterende brugernavn
 	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=?)", username).Scan(&usernameExists)
 	if err != nil && err != sql.ErrNoRows {
@@ -495,21 +564,21 @@ func userExists(username, email string) (bool, bool) {
 func userIsLoggedIn(r *http.Request) bool {
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		return false 
+		return false
 	}
 
+	// Check if user_id exists in session
 	userID, ok := session.Values["user_id"]
 	return ok && userID != nil
 }
 
-
-// simpel email validering indtil videre kun med .com. skal udvides. 
+// simpel email validering indtil videre kun med .com. skal udvides.
 func isValidEmail(email string) bool {
 	email = strings.TrimSpace(email) // Fjern mellemrum
 	if !strings.Contains(email, "@") {
 		return false
 	}
-		
+
 	// Tjek at den ikke starter eller slutter med "@"
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
@@ -608,6 +677,7 @@ func hashPassword(password string) (string, error) {
 }
 
 func validatePassword(hashedPassword, inputPassword string) bool {
+
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(inputPassword))
 	return err == nil
 }
@@ -641,8 +711,8 @@ func main() {
 
 	// Definerer api-erne
 	r.HandleFunc("/api/login", apiLogin).Methods("POST")
-	r.HandleFunc("/api/search", searchHandler).Methods("GET") 
-	r.HandleFunc("/api/logout", logoutHandler).Methods("GET") 
+	r.HandleFunc("/api/search", searchHandler).Methods("GET")
+	r.HandleFunc("/api/logout", logoutHandler).Methods("GET")
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
 	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
 	r.HandleFunc("/api/weather", weatherHandler).Methods("GET") //weather-side

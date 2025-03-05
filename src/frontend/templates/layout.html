@@ -12,13 +12,13 @@
             {{ if .UserLoggedIn }}
                 <a id="nav-logout" href="/api/logout">Log out</a>
             {{ else }}
-                <a id="nav-login" href="#">Log in</a>
+                <a id="nav-login" href="/login">Log in</a>
                 <a id="nav-register" href="/register">Register</a>
             {{ end }}
         </nav>
-        <div>
-            {{ block "content" . }}{{ end }}
-        </div>
+        <main>
+            {{ template "content" . }}
+        </main>
 
         <footer>
             <span>¿Who Knows? &copy; 2025</span>
