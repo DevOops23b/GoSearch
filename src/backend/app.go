@@ -336,26 +336,38 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 func apiLogin(w http.ResponseWriter, r *http.Request) {
 
-	data := PageData{
-		Title:    "Log in",
-		Template: "login",
-		Error:    "Invalid username or password",
-	}
-
 	err := r.ParseForm()
 	if err != nil {
-		http.Error(w, "Invalid request!", http.StatusBadRequest)
+		data := PageData{
+			Title:    "Log in",
+			Template: "login",
+			Error:    "Invalid username or password",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
-	}
+	}		
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
 	// Checks that username and password are not empty strings
 	if username == "" || password == "" {
-		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-			log.Printf("Error rendering template: %v", err)
-			http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		
+		data := PageData {
+			Title:		"Log in",
+			Template:	"login.html",
+			Error:		"Username and password cannot be empty",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 		return
 	}
@@ -366,25 +378,64 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = ?", username).Scan(&user.ID, &user.Username, &user.Password)
 
 	// If the username is not found in th db or password is incorrect
-	if err != nil || !validatePassword(user.Password, password) {
-		data := PageData{Error: "Invalid username or password"}
-		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
-			log.Printf("Error rendering template: %v", err)
-			http.Error(w, "Error rendering page", http.StatusInternalServerError)
+	if err == sql.ErrNoRows || !validatePassword(user.Password, password) {
+		data := PageData {
+			Title: 		"Log in",
+			Template:	"login.html",
+			Error:		"Incorrect username or password",
 		}
-
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
+	}
+
+	if err != nil {
+		data := PageData {
+			Title:		"Log in",
+			Template:	"login.html",
+			Error:		"Internal server error",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		data := PageData {
+			Title:		"Log in",
+			Template:	"login.html",
+			Error:		"Session error",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
+
 	session.Values["user_id"] = user.ID
 	if err := session.Save(r, w); err != nil {
-		log.Printf("Session save failed: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		data := PageData {
+			Title:		"Log in",
+			Template:	"login.html",
+			Error:		"Session save error",
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 
