@@ -625,8 +625,34 @@ var cachedWeather = make(map[string]struct {
 	Weather string
 })
 
-
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
+    city := r.URL.Query().Get("city")
+    if city == "" {
+        city = "din valgte by"
+    }
+
+    data := struct {
+        City    string
+        Message string
+    }{
+        City:    city,
+        Message: "Solen skinner i " + city + "!",
+    }
+
+    tmpl, err := template.ParseFiles("../frontend/templates/weather.html")
+    if err != nil {
+        http.Error(w, "Error loading weather page", http.StatusInternalServerError)
+        return
+    }
+    if err := tmpl.Execute(w, data); err != nil {
+        log.Printf("Error executing template: %v", err)
+        http.Error(w, "Error rendering page", http.StatusInternalServerError)
+    }
+}
+
+
+
+/*func weatherHandler(w http.ResponseWriter, r *http.Request) {
 	apiKey := os.Getenv("WEATHER_API_KEY") 
 	city := r.URL.Query().Get("city")
 
@@ -676,7 +702,7 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Hvis alt fejler, returner en fejl
 	http.Error(w, "Failed to fetch weather data", http.StatusInternalServerError)
-}
+}*/
 
 
 func renderWeatherTemplate(w http.ResponseWriter, data struct {
