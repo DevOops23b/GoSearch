@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"encoding/json" // Gør at vi kan læse json-format
+	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
 	"net/http"      // til http-servere og håndtering af routere
 
@@ -599,7 +599,7 @@ func isValidEmail(email string) bool {
 /// Weather handler
 //////////////////////////////////////////////////////////////////////////////////
 
-func loadWeatherData() (map[string]struct{Name string; Temp float64; Weather string}, error) {
+/*func loadWeatherData() (map[string]struct{Name string; Temp float64; Weather string}, error) {
 	file, err := os.Open("../weather_data.json")
 	if err != nil {
 		return nil, fmt.Errorf("error opening weather data file: %v", err)
@@ -623,10 +623,36 @@ var cachedWeather = make(map[string]struct {
 	Name 	string
 	Temp 	float64
 	Weather string
-})
-
+})*/
 
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
+    city := r.URL.Query().Get("city")
+    if city == "" {
+        city = "din valgte by"
+    }
+
+    data := struct {
+        City    string
+        Message string
+    }{
+        City:    city,
+        Message: "Solen skinner i " + city + "!",
+    }
+
+    tmpl, err := template.ParseFiles("../frontend/templates/weather.html")
+    if err != nil {
+        http.Error(w, "Error loading weather page", http.StatusInternalServerError)
+        return
+    }
+    if err := tmpl.Execute(w, data); err != nil {
+        log.Printf("Error executing template: %v", err)
+        http.Error(w, "Error rendering page", http.StatusInternalServerError)
+    }
+}
+
+
+
+/*func weatherHandler(w http.ResponseWriter, r *http.Request) {
 	apiKey := os.Getenv("WEATHER_API_KEY") 
 	city := r.URL.Query().Get("city")
 
@@ -676,10 +702,10 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Hvis alt fejler, returner en fejl
 	http.Error(w, "Failed to fetch weather data", http.StatusInternalServerError)
-}
+}*/
 
 
-func renderWeatherTemplate(w http.ResponseWriter, data struct {
+/*func renderWeatherTemplate(w http.ResponseWriter, data struct {
 	Name    string
 	Temp    float64
 	Weather string
@@ -695,7 +721,7 @@ func renderWeatherTemplate(w http.ResponseWriter, data struct {
 		http.Error(w, "Error rendering weather template", http.StatusInternalServerError)
 	}
 
-}
+}*/
 
 
 //////////////////////////////////////////////////////////////////////////////////
