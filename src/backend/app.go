@@ -599,7 +599,7 @@ func isValidEmail(email string) bool {
 /// Weather handler
 //////////////////////////////////////////////////////////////////////////////////
 
-func loadWeatherData() (map[string]struct{Name string; Temp float64; Weather string}, error) {
+/*func loadWeatherData() (map[string]struct{Name string; Temp float64; Weather string}, error) {
 	file, err := os.Open("../weather_data.json")
 	if err != nil {
 		return nil, fmt.Errorf("error opening weather data file: %v", err)
@@ -623,7 +623,7 @@ var cachedWeather = make(map[string]struct {
 	Name 	string
 	Temp 	float64
 	Weather string
-})
+})*/
 
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
     city := r.URL.Query().Get("city")
@@ -705,7 +705,7 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 }*/
 
 
-func renderWeatherTemplate(w http.ResponseWriter, data struct {
+/*func renderWeatherTemplate(w http.ResponseWriter, data struct {
 	Name    string
 	Temp    float64
 	Weather string
@@ -721,7 +721,7 @@ func renderWeatherTemplate(w http.ResponseWriter, data struct {
 		http.Error(w, "Error rendering weather template", http.StatusInternalServerError)
 	}
 
-}
+}*/
 
 
 //////////////////////////////////////////////////////////////////////////////////
