@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"encoding/json" // Gør at vi kan læse json-format
+	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
 	"net/http"      // til http-servere og håndtering af routere
 
