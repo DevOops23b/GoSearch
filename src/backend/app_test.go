@@ -28,8 +28,8 @@ func TestLoginSuccess(t *testing.T) {
     mockDB, mock := setupMockDB()
     defer mockDB.Close()
 
-    //testUsername := "testUser"
-    //testPassword := "testPassword"
+    testUsername := "testUser"
+    testPassword := "testPassword"
 
     hashedPassword, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
     assert.NoError(t, err)
