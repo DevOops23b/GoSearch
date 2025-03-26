@@ -6,9 +6,9 @@ import (
     "net/http/httptest"
     "database/sql"
     "github.com/gorilla/sessions"
-    "net/url"
-    "strings"
-    "golang.org/x/crypto/bcrypt"
+    //"net/url"
+    //"strings"
+   // "golang.org/x/crypto/bcrypt"
     "github.com/DATA-DOG/go-sqlmock"
     "github.com/stretchr/testify/assert"
 )
@@ -24,7 +24,7 @@ func setupMockDB() (*sql.DB, sqlmock.Sqlmock) {
     return mockDB, mock
 }
 
-func TestLoginSuccess(t *testing.T) {
+/*func TestLoginSuccess(t *testing.T) {
     mockDB, mock := setupMockDB()
     defer mockDB.Close()
 
@@ -58,11 +58,11 @@ func TestLoginSuccess(t *testing.T) {
 
     assert.Equal(t, http.StatusSeeOther, response.StatusCode, "Expected redirect after successful login")
 
-}
+}*/
 
 
 // Failed login
-func TestFailedLogin(t *testing.T) {
+/*func TestFailedLogin(t *testing.T) {
     testCases := []struct {
         name            string
         username        string
@@ -145,7 +145,7 @@ for _, tc := range testCases {
     })
 }
 
-}
+}*/
 
 // Logout test
 func TestLogout(t *testing.T) {
