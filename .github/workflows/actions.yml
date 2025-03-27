@@ -47,6 +47,11 @@ jobs:
         working-directory: ./src/backend
         run: go build -v .
 
+      - uses: actions/checkout@v3
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
