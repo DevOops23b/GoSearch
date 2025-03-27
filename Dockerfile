@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY src ./src
+COPY src ./src/backend
 
 # Disables CGO and specifies the name for the compiled application as app
 RUN CGO_ENABLED=0 GOOS=linux go build -o app ./src/backend
