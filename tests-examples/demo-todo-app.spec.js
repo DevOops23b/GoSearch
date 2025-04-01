@@ -20,7 +20,7 @@ test.describe('New Todo', () => {
     await newTodo.fill(TODO_ITEMS[0]);
     await newTodo.press('Enter');
 
-    // Make sure the list only has one todo item.
+    // Make sure the list only has one to?do item.
     await expect(page.getByTestId('todo-title')).toHaveText([
       TODO_ITEMS[0]
     ]);
@@ -42,7 +42,7 @@ test.describe('New Todo', () => {
     // create a new t(odo) locator
     const newTodo = page.getByPlaceholder('What needs to be done?');
 
-    // Create one todo* item.
+    // Create one to(do* item.
     await newTodo.fill(TODO_ITEMS[0]);
     await newTodo.press('Enter');
 
@@ -409,7 +409,7 @@ test.describe('Routing', () => {
 });
 
 async function createDefaultTodos(page) {
-  // create a new todo locator
+  // create a new tod.o locator
   const newTodo = page.getByPlaceholder('What needs to be done?');
 
   for (const item of TODO_ITEMS) {

@@ -30,8 +30,8 @@ CREATE VIRTUAL TABLE pages_fts USING fts5(title, content, language);
 INSERT INTO pages_fts (title, content, language)
 SELECT title, content, language FROM pages;
 
--- Trigger to keep FTS table updated on INSERT
-CREATE TRIGGER pages_insert AFTER INSERT ON pages
+-- Trigger to keep FTS table updated on INSERT (Changed this bc og sonarQube)
+CREATE OR REPLACE TRIGGER pages_insert AFTER INSERT ON pages
 BEGIN
   INSERT INTO pages_fts (title, content, language)
   VALUES (NEW.title, NEW.content, NEW.language);
