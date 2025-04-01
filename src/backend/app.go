@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"encoding/json" // Gør at vi kan læse json-format
+	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
 	"net/http"      // til http-servere og håndtering af routere
 
@@ -22,6 +22,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/gorilla/sessions"
+
+	"github.com/robfig/cron/v3"
+	// Import the cron library to schedule periodic tasks
 )
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -60,14 +63,13 @@ type Page struct {
 }
 
 type WeatherResponse struct {
-	Name 		string    `jason:"name"`
-	Main 		struct {
-		Temp float64 	  `json:"temp"`
+	Name string `jason:"name"`
+	Main struct {
+		Temp float64 `json:"temp"`
 	} `json:"main"`
 	Weather []struct {
 		Description string `json:"description"`
 	} `json:"weather"`
-
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -229,9 +231,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Query: %s, Language: %s\n", query, language)
 
 		rows, err := queryDB(
-			"SELECT title, url, content FROM pages WHERE language = ? AND LOWER(title) LIKE LOWER(?)",
-			language, "%"+query+"%",
-		)
+			"SELECT title, url, content, bm25(pages_fts) AS rank FROM pages_fts WHERE pages_fts MATCH ? AND language = ? ORDER BY rank",
+			query, language,
+		)		
 
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
@@ -360,18 +362,18 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		return
-	}		
+	}
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
 	// Checks that username and password are not empty strings
 	if username == "" || password == "" {
-		
-		data := PageData {
-			Title:		"Log in",
-			Template:	"login.html",
-			Error:		"Username and password cannot be empty",
+
+		data := PageData{
+			Title:    "Log in",
+			Template: "login.html",
+			Error:    "Username and password cannot be empty",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		err := tmpl.ExecuteTemplate(w, "layout.html", data)
@@ -389,10 +391,10 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 
 	// If the username is not found in th db or password is incorrect
 	if err == sql.ErrNoRows || !validatePassword(user.Password, password) {
-		data := PageData {
-			Title: 		"Log in",
-			Template:	"login.html",
-			Error:		"Incorrect username or password",
+		data := PageData{
+			Title:    "Log in",
+			Template: "login.html",
+			Error:    "Incorrect username or password",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		err := tmpl.ExecuteTemplate(w, "layout.html", data)
@@ -404,10 +406,10 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		data := PageData {
-			Title:		"Log in",
-			Template:	"login.html",
-			Error:		"Internal server error",
+		data := PageData{
+			Title:    "Log in",
+			Template: "login.html",
+			Error:    "Internal server error",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		err := tmpl.ExecuteTemplate(w, "layout.html", data)
@@ -419,10 +421,10 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 
 	session, err := store.Get(r, "session-name")
 	if err != nil {
-		data := PageData {
-			Title:		"Log in",
-			Template:	"login.html",
-			Error:		"Session error",
+		data := PageData{
+			Title:    "Log in",
+			Template: "login.html",
+			Error:    "Session error",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		err := tmpl.ExecuteTemplate(w, "layout.html", data)
@@ -435,10 +437,10 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 
 	session.Values["user_id"] = user.ID
 	if err := session.Save(r, w); err != nil {
-		data := PageData {
-			Title:		"Log in",
-			Template:	"login.html",
-			Error:		"Session save error",
+		data := PageData{
+			Title:    "Log in",
+			Template: "login.html",
+			Error:    "Session save error",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		err := tmpl.ExecuteTemplate(w, "layout.html", data)
@@ -539,7 +541,6 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-
 // Ser om brugere allerede eksisterer
 func userExists(username, email string) (bool, bool) {
 	var usernameExists, emailExists bool
@@ -599,110 +600,37 @@ func isValidEmail(email string) bool {
 /// Weather handler
 //////////////////////////////////////////////////////////////////////////////////
 
-func loadWeatherData() (map[string]struct{Name string; Temp float64; Weather string}, error) {
-	file, err := os.Open("../weather_data.json")
-	if err != nil {
-		return nil, fmt.Errorf("error opening weather data file: %v", err)
-	}
-	defer file.Close()
-
-	var weatherData map[string]struct {
-		Name    string
-		Temp    float64
-		Weather string
-	}
-	err = json.NewDecoder(file).Decode(&weatherData)
-	if err != nil {
-		return nil, err
-	}
-	return weatherData, nil
-}
-
-
-var cachedWeather = make(map[string]struct {
-	Name 	string
-	Temp 	float64
-	Weather string
-})
-
 
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
-	apiKey := os.Getenv("WEATHER_API_KEY") 
 	city := r.URL.Query().Get("city")
-
 	if city == "" {
-		http.Error(w, "City name is required", http.StatusBadRequest)
-		return
+		city = "din valgte by"
 	}
 
-	// Tjek cache først
-	if cachedData, found := cachedWeather[city]; found {
-		renderWeatherTemplate(w, cachedData)
-		return
+	data := struct {
+		City    string
+		Message string
+	}{
+		City:    city,
+		Message: "Solen skinner i " + city + "!",
 	}
-
-	// Forsøg at hente data fra API
-	url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s&units=metric", city, apiKey)
-	resp, err := http.Get(url)
-	if err == nil && resp.StatusCode == http.StatusOK {
-		defer resp.Body.Close()
-
-		var weather WeatherResponse
-		if err := json.NewDecoder(resp.Body).Decode(&weather); err == nil {
-			// Opdater cache med API-data
-			cachedWeather[city] = struct {
-				Name    string
-				Temp    float64
-				Weather string
-			}{
-				Name:    weather.Name,
-				Temp:    weather.Main.Temp,
-				Weather: weather.Weather[0].Description,
-			}
-
-			renderWeatherTemplate(w, cachedWeather[city])
-			return
-		}
-	}
-
-	// Hvis API'en fejler, forsøg at hente data fra lokal JSON-fil
-	weatherData, err := loadWeatherData()
-	if err == nil {
-		if localWeather, found := weatherData[city]; found {
-			renderWeatherTemplate(w, localWeather)
-			return
-		}
-	}
-
-	// Hvis alt fejler, returner en fejl
-	http.Error(w, "Failed to fetch weather data", http.StatusInternalServerError)
-}
-
-
-func renderWeatherTemplate(w http.ResponseWriter, data struct {
-	Name    string
-	Temp    float64
-	Weather string
-}) {
 
 	tmpl, err := template.ParseFiles("../frontend/templates/weather.html")
 	if err != nil {
-		http.Error(w, "Error loading weather template", http.StatusInternalServerError)
+		http.Error(w, "Error loading weather page", http.StatusInternalServerError)
 		return
 	}
-
 	if err := tmpl.Execute(w, data); err != nil {
-		http.Error(w, "Error rendering weather template", http.StatusInternalServerError)
+		log.Printf("Error executing template: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
-
 }
-
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Security Functions
 //////////////////////////////////////////////////////////////////////////////////
 
-//hasher passwordet med bcrypt.
+// hasher passwordet med bcrypt.
 func hashPassword(password string) (string, error) {
 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -717,6 +645,25 @@ func validatePassword(hashedPassword, inputPassword string) bool {
 	return err == nil
 }
 
+// startCronScheduler sets up and starts a cron job that runs checkTables() every minute
+func startCronScheduler() {
+
+	c := cron.New()
+
+	// Schedule the checkTables function to run every minute
+	// Cron expression "*/1 * * * *" means it runs at the start of every minute
+	_, err := c.AddFunc("*/1 * * * *", func() {
+		fmt.Println("Cron job: Running checkTables at", time.Now())
+		checkTables()
+	})
+	if err != nil {
+		log.Fatalf("Error scheduling cron job: %v", err)
+	}
+
+	c.Start()
+
+}
+
 //////////////////////////////////////////////////////////////////////////////////
 /// Main
 //////////////////////////////////////////////////////////////////////////////////
@@ -727,6 +674,9 @@ func main() {
 	defer closeDB()
 
 	checkTables()
+
+	// Start the cron scheduler to run checkTables periodically
+	startCronScheduler()
 
 	err := db.Ping()
 	if err != nil {
@@ -739,9 +689,9 @@ func main() {
 	r := mux.NewRouter()
 
 	//Definerer routerne.
-	r.HandleFunc("/", rootHandler).Methods("GET")       // Forside
-	r.HandleFunc("/about", aboutHandler).Methods("GET") //about-side
-	r.HandleFunc("/login", login).Methods("GET")		//Login-side
+	r.HandleFunc("/", rootHandler).Methods("GET")             // Forside
+	r.HandleFunc("/about", aboutHandler).Methods("GET")       //about-side
+	r.HandleFunc("/login", login).Methods("GET")              //Login-side
 	r.HandleFunc("/register", registerHandler).Methods("GET") //Register-side
 
 	// Definerer api-erne
@@ -751,7 +701,6 @@ func main() {
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
 	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
 	r.HandleFunc("/api/weather", weatherHandler).Methods("GET") //weather-side
-
 
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))

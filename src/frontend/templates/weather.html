@@ -3,13 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Weather in {{.Name}}</title>
+    <title>The Weather in {{.City}}</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
 </head>
 <body>
-    <h1>Weather in {{.Name}}</h1>
-    <p>Current temperature: {{.Temp}}°C</p>
-    <p>Weather conditions: {{.Weather}}</p>
-    <a href="/">Back to home</a>
-    
+    <div class="page">
+        <nav class="navigation">
+            <a href="/">Home</a>
+        </nav>
+
+        <main> 
+            <h1>Weather in {{.City}}</h1>
+            <p>{{.Message}}</p>
+            <a href="/">Back to home</a>
+        </main> <!-- Lukker main -->
+
+        <footer>
+            <span>¿Who Knows? &copy; 2025</span>
+            <a href="/about">About</a>
+        </footer>
+    </div>
 </body>
 </html>
