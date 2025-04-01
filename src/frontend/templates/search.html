@@ -17,7 +17,7 @@
             {{ end }}
         </nav>
 
-        <div class="body">
+        <main> 
             <h2>Search Results for "{{ .Query }}"</h2>
     
             {{ if not .Results }}
@@ -32,15 +32,12 @@
                     {{ end }}
                 </div>
             {{ end }}
-    
-        </div>
+        </main> 
 
-        <div class="footer">
+        <footer>
             <span>¿Who Knows? &copy; 2025</span>
             <a href="/about">About</a>
-        </div>
-
+        </footer>
     </div>
-
 </body>
 </html>
