@@ -1,19 +1,40 @@
 /* Website Defaults */
-body {
+html, body {
+    height: 100%; /* Sørger for at tage hele skærmhøjden */
+    margin: 0;
+    padding: 0;
     font-family: 'Trebuchet MS', sans-serif;
     font-size: 14px;
+    display: flex;
+    flex-direction: column;
 }
 
-div.page div.body {
+main {
+    flex-grow: 1; /* Skubber footeren til bunden */
+}
+
+.page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Minimum højde = hele viewportens højde */
+}
+
+/*div.page div.body {
     padding: 10px;
-}
+    display: flex;
+    flex-direction: column;
+}*/
 
-div.page div.footer {
+
+/*div.page div.footer {
     background: #eee;
     color: #888;
     padding: 5px 10px;
+    text-align: center;
     font-size: 12px;
-}
+    margin-top: auto;
+    width: 100%;
+}*/
 
 
 ul.flashes {
@@ -40,7 +61,6 @@ div.error {
     padding: 4px;
     font-size: 13px;
 }
-
 
 /* Custom Styles */
 nav {
@@ -83,4 +103,13 @@ button:hover {
 button:active {
     /*background-color: #f0f0f0;*/
     box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+
+footer {
+    background: #eee;
+    color: #888;
+    padding: 10px;
+    text-align: center;
+    font-size: 15px;
+    width: 100%;
 }

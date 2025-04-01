@@ -6,7 +6,6 @@
     <title>Register - ¿Who Knows?</title>
     <link rel="stylesheet" type="text/css" href="static/style.css">
     <link rel="stylesheet" type="text/css" href="static/register.css">
-
 </head>
 <body>
     <div class="page">
@@ -16,7 +15,7 @@
             <a id="nav-register" href="/register">Register</a>
         </nav>
 
-        <div class="body">
+        <main>  
             <h2>Register</h2>
             <form action="/api/register" method="POST">
                 <div class="form-group">
@@ -41,17 +40,15 @@
             
                 <button type="submit">Register</button>
             </form>
-            
 
             {{ if .Error }}
             <p class="error">{{ .Error }}</p>
             {{ end }}
-        </div>
-
-        <div class="footer">
+        </main>  
+        <footer>
             <span>¿Who Knows? &copy; 2025</span>
             <a href="/about">About</a>
-        </div>
+        </footer>
     </div>
 </body>
 </html>
