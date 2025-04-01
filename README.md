@@ -1,4 +1,5 @@
-![<TEXT ON SHIELD>](https://github.com/<DevOops23b>/<GoSearch>/actions/workflows/<actions.yml>/badge.svg?branch=main)
+[![Go CI](https://github.com/DevOops23b/GoSearch/actions/workflows/actions.yml/badge.svg?branch=Develop)](https://github.com/DevOops23b/GoSearch/actions/workflows/actions.yml)
 
-Hej med dig 
-## hej herfras
+
+## Run program:
+$ run go app.go
