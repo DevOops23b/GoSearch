@@ -1,0 +1,57 @@
+name: Bug Report
+description: "Create an issue for a bug"
+title: "[bug]: "
+labels: "bug"
+projects: ["DevOops23b WhoKnows Kanban"]
+body:
+- type: checkboxes
+  id: bug-severity
+  attributes:
+    label: Severity of the bug
+    description: "How severe is the issue?"
+    options:
+      - label: Critical 
+      - label: Major 
+      - label: Minor 
+  validations:
+    required: true  
+- type: textarea
+  id: bug-description
+  attributes:
+    label: Bug description
+    description: "Describe the bug clearly, including what happens and what you expected."
+  validations:
+    required: true
+- type: textarea
+  id: steps-to-reproduce
+  attributes:
+    label: Steps to reproduce
+    description: "Provide step-by-step instructions to reproduce the bug."
+    placeholder: |
+      1. Go to...
+      2. Click on...
+      3. See error...
+  validations:
+    required: true
+- type: textarea
+  id: expected-behavior
+  attributes:
+    label: Expected behavior
+    description: "What should have happened instead?"
+  validations:
+    required: true
+- type: input
+  id: environment
+  attributes:
+    label: Environment
+    description: "Provide details about the environment where the bug occurred."
+    placeholder: "OS, Browser, Device, etc."
+  validations:
+    required: false
+- type: textarea
+  id: additional-info
+  attributes:
+    label: Additional information
+    description: "Any other context or notes about the bug."
+  validations:
+    required: false
