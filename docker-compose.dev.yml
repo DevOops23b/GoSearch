@@ -5,16 +5,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/DevOops23b/GoSearch:latest
+    image: ghcr.io/DevOops23b/gosearch:latest
     container_name: go-app
     volumes:
-      - src\backend\app.go:/app/src/backend
-      - src\whoknows.db:/app/src/gosearch.dev.db
+      - ./src/backend/app.go:/app/src/backend
+      - ./src/whoknows.db:/app/src/gosearch.dev.db
       - sqlite-data:/app/src/gosearch.dev.db
-    ports: 8080:8080
+    ports: 
+      - "8080:8080"
     environment:
       - DATABASE_PATH=/app/src/gosearch.dev.db
       - APP_ENV=development
       - LOG_LEVEL=debug
+    restart: always  
   volumes:
       sqlite-data  
