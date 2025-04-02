@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS pages (
 -- Create virtual with fts.
 DROP TABLE IF EXISTS pages_fts;
 
-CREATE VIRTUAL TABLE pages_fts USING fts5(title, content, language);
+CREATE VIRTUAL TABLE pages_fts USING fts5(title, url, language);
 
 -- Getting data from pages and putting it into pages_fts table.
 INSERT INTO pages_fts (title, content, language)
