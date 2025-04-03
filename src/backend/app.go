@@ -445,7 +445,6 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Redirect to reset password page
 		http.Redirect(w, r, "/reset-password", http.StatusSeeOther)
 		return
 	}
@@ -538,7 +537,7 @@ func apiResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the passwords from the form using the correct field names
+	// Get the passwords
 	password := r.FormValue("password")
 	confirmPassword := r.FormValue("confirmPassword")
 
@@ -578,7 +577,7 @@ func apiResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update the password in the database - using reset_required to match your SQLite column
+	// Update the password in the database
 	_, err = db.Exec("UPDATE users SET password = ?, reset_required = 0 WHERE id = ?", hashedPassword, userID)
 	if err != nil {
 		http.Error(w, "Error updating password", http.StatusInternalServerError)
