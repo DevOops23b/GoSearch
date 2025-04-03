@@ -40,10 +40,11 @@ var db *sql.DB
 var store = sessions.NewCookieStore([]byte("Very-secret-key"))
 
 type User struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	ID            int    `json:"id"`
+	Username      string `json:"username"`
+	Email         string `json:"email"`
+	Password      string `json:"password"`
+	ResetRequired bool   `json:"reset_required"`
 }
 
 type PageData struct {
@@ -106,7 +107,6 @@ func initDB() {
 
 }
 
-
 func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
@@ -160,8 +160,6 @@ func checkTables() {
 		fmt.Printf("Title: %s, URL: %s, Language: %s\n", page.Title, page.URL, page.Language)
 	}
 }
-
-
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Root handlers
@@ -235,11 +233,11 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Query: %s, Language: %s\n", query, language)
 
 		//"SELECT title, url, content, bm25(pages_fts) AS rank FROM pages_fts WHERE pages_fts MATCH ? AND language = ? ORDER BY rank",
-		
+
 		rows, err := queryDB(
 			"SELECT title, url, content FROM pages WHERE content LIKE '%' || ? || '%' AND language = ?",
 			query, language,
-		)			
+		)
 
 		if err != nil {
 			log.Printf("Database error: %v", err)
@@ -392,10 +390,10 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user User
+	var resetRequired int
 
 	// Finds the user in the db based on the username
-	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = ?", username).Scan(&user.ID, &user.Username, &user.Password)
-
+	err = db.QueryRow("SELECT id, username, password, reset_required FROM users WHERE username = ?", username).Scan(&user.ID, &user.Username, &user.Password, &resetRequired)
 	// If the username is not found in th db or password is incorrect
 	if err == sql.ErrNoRows || !validatePassword(user.Password, password) {
 		data := PageData{
@@ -409,6 +407,46 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		return
+	}
+
+	// If the user needs to reset their password
+	if resetRequired == 1 {
+		// Create a session for the user first
+		session, err := store.Get(r, "session-name")
+		if err != nil {
+			data := PageData{
+				Title:    "Log in",
+				Template: "login.html",
+				Error:    "Session error",
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			err := tmpl.ExecuteTemplate(w, "layout.html", data)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+
+		session.Values["user_id"] = user.ID
+		if err := session.Save(r, w); err != nil {
+			data := PageData{
+				Title:    "Log in",
+				Template: "login.html",
+				Error:    "Session save error",
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			err := tmpl.ExecuteTemplate(w, "layout.html", data)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+
+		// Redirect to reset password page
+		http.Redirect(w, r, "/reset-password", http.StatusSeeOther)
 		return
 	}
 
@@ -460,6 +498,95 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
+}
+
+// ////////////////////////////////////////////////////////////////////////////////
+// / Reset passwords
+// ////////////////////////////////////////////////////////////////////////////////
+func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	// Assuming the user is logged in and we have their user ID in session
+	session, _ := store.Get(r, "session-name")
+	userID, ok := session.Values["user_id"]
+
+	if !ok || userID == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Display reset password form
+	tmpl, err := template.ParseFiles("../frontend/templates/resetPassword.html")
+	if err != nil {
+		http.Error(w, "Error loading reset password page", http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Message": "Due to a recent security breach, you must change your password to continue using the system.",
+		"Error":   "",
+	}
+
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Error rendering reset password page", http.StatusInternalServerError)
+	}
+}
+
+func apiResetPassword(w http.ResponseWriter, r *http.Request) {
+	// Parse the new password from the form
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
+		return
+	}
+
+	// Get the passwords from the form using the correct field names
+	password := r.FormValue("password")
+	confirmPassword := r.FormValue("confirmPassword")
+
+	// Validate passwords
+	if password == "" {
+		tmpl, _ := template.ParseFiles("../frontend/templates/resetPassword.html")
+		data := map[string]interface{}{
+			"Message": "Due to a recent security breach, you must change your password to continue using the system.",
+			"Error":   "New password cannot be empty",
+		}
+		tmpl.Execute(w, data)
+		return
+	}
+
+	if password != confirmPassword {
+		tmpl, _ := template.ParseFiles("../frontend/templates/resetPassword.html")
+		data := map[string]interface{}{
+			"Message": "Due to a recent security breach, you must change your password to continue using the system.",
+			"Error":   "Passwords do not match",
+		}
+		tmpl.Execute(w, data)
+		return
+	}
+
+	// Hash the new password
+	hashedPassword, err := hashPassword(password)
+	if err != nil {
+		http.Error(w, "Error hashing password", http.StatusInternalServerError)
+		return
+	}
+
+	// Get current user ID from session
+	session, _ := store.Get(r, "session-name")
+	userID, ok := session.Values["user_id"]
+	if !ok || userID == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Update the password in the database - using reset_required to match your SQLite column
+	_, err = db.Exec("UPDATE users SET password = ?, reset_required = 0 WHERE id = ?", hashedPassword, userID)
+	if err != nil {
+		http.Error(w, "Error updating password", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect the user after the password is updated
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -543,7 +670,7 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
-	
+
 	userID, err := result.LastInsertId()
 	if err != nil {
 		http.Error(w, "Failed to retrieve user ID", http.StatusInternalServerError)
@@ -566,7 +693,6 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// Omdiriger til forsiden (bruger er nu logget ind)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
-
 
 // Ser om brugere allerede eksisterer
 func userExists(username, email string) (bool, bool) {
@@ -626,7 +752,6 @@ func isValidEmail(email string) bool {
 //////////////////////////////////////////////////////////////////////////////////
 /// Weather handler
 //////////////////////////////////////////////////////////////////////////////////
-
 
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
 	city := r.URL.Query().Get("city")
@@ -728,6 +853,8 @@ func main() {
 	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
 	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
 	r.HandleFunc("/api/weather", weatherHandler).Methods("GET") //weather-side
+	r.HandleFunc("/reset-password", resetPasswordHandler).Methods("GET")
+	r.HandleFunc("/reset-password", apiResetPassword).Methods("POST")
 
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
