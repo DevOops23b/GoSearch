@@ -55,11 +55,12 @@ type PageData struct {
 }
 
 type Page struct {
-	Title       string    `json:"title"`
-	URL         string    `json:"url"`
-	Language    string    `json:"language"`
-	LastUpdated time.Time `json:"last_updated"`
-	Content     string    `json:"content"`
+	Title       string         `json:"title"`
+	URL         string         `json:"url"`
+	Language    string         `json:"language"`
+	LastUpdated time.Time      `json:"last_updated"`
+	Content     string         `json:"content"`
+	NewColumn   sql.NullString `json:"new_column"`
 }
 
 type WeatherResponse struct {
@@ -106,7 +107,6 @@ func initDB() {
 
 }
 
-
 func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
@@ -152,7 +152,7 @@ func checkTables() {
 
 	for rows2.Next() {
 		var page Page
-		err := rows2.Scan(&page.Title, &page.URL, &page.Language, &page.LastUpdated, &page.Content)
+		err := rows2.Scan(&page.Title, &page.URL, &page.Language, &page.LastUpdated, &page.Content, &page.NewColumn)
 		if err != nil {
 			log.Printf("Error scanning page: %v", err)
 			continue
@@ -160,8 +160,6 @@ func checkTables() {
 		fmt.Printf("Title: %s, URL: %s, Language: %s\n", page.Title, page.URL, page.Language)
 	}
 }
-
-
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Root handlers
@@ -235,11 +233,11 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Query: %s, Language: %s\n", query, language)
 
 		//"SELECT title, url, content, bm25(pages_fts) AS rank FROM pages_fts WHERE pages_fts MATCH ? AND language = ? ORDER BY rank",
-		
+		//Brug FTS
 		rows, err := queryDB(
-			"SELECT title, url, content FROM pages WHERE content LIKE '%' || ? || '%' AND language = ?",
+			"SELECT title, url, content, new_column FROM pages_fts WHERE pages_fts MATCH ? AND language = ?",
 			query, language,
-		)			
+		)
 
 		if err != nil {
 			log.Printf("Database error: %v", err)
@@ -252,14 +250,20 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		// SQL-forespørgsel - finder sider i databasen, hvor 'content' matcher 'query'
 		for rows.Next() {
 			var title, url, content string
-			if err := rows.Scan(&title, &url, &content); err != nil {
+			var newColumn sql.NullString // Add new column
+			if err := rows.Scan(&title, &url, &content, &newColumn); err != nil {
 				http.Error(w, "Error reading row", http.StatusInternalServerError)
 				return
+			}
+			newColumnValue := ""
+			if newColumn.Valid {
+				newColumnValue = newColumn.String
 			}
 			searchResults = append(searchResults, map[string]string{
 				"title":       title,
 				"url":         url,
 				"description": content,
+				"new_column":  newColumnValue,
 			})
 		}
 	}
@@ -606,7 +610,6 @@ func isValidEmail(email string) bool {
 //////////////////////////////////////////////////////////////////////////////////
 /// Weather handler
 //////////////////////////////////////////////////////////////////////////////////
-
 
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
 	city := r.URL.Query().Get("city")
