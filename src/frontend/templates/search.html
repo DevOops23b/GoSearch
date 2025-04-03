@@ -28,11 +28,6 @@
                         <div>
                             <h2><a href="{{ .url }}" class="search-result-title">{{ .title }}</a></h2>
                             <p class="search-result-description">{{ .description }}</p>
-                            {{ if .NewColumn.Valid }}
-                                <p class="search-result-new-column"><strong>Additional Info:</strong> {{ .NewColumn.String }}</p>
-                            {{ else }}
-                                <p class="search-result-new-column">No additional info available.</p>
-                            {{ end }}
                         </div>
                     {{ end }}
                 </div>

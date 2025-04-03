@@ -55,12 +55,11 @@ type PageData struct {
 }
 
 type Page struct {
-	Title       string         `json:"title"`
-	URL         string         `json:"url"`
-	Language    string         `json:"language"`
-	LastUpdated time.Time      `json:"last_updated"`
-	Content     string         `json:"content"`
-	NewColumn   sql.NullString `json:"new_column"`
+	Title       string    `json:"title"`
+	URL         string    `json:"url"`
+	Language    string    `json:"language"`
+	LastUpdated time.Time `json:"last_updated"`
+	Content     string    `json:"content"`
 }
 
 type WeatherResponse struct {
@@ -152,7 +151,7 @@ func checkTables() {
 
 	for rows2.Next() {
 		var page Page
-		err := rows2.Scan(&page.Title, &page.URL, &page.Language, &page.LastUpdated, &page.Content, &page.NewColumn)
+		err := rows2.Scan(&page.Title, &page.URL, &page.Language, &page.LastUpdated, &page.Content)
 		if err != nil {
 			log.Printf("Error scanning page: %v", err)
 			continue
@@ -235,7 +234,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		//"SELECT title, url, content, bm25(pages_fts) AS rank FROM pages_fts WHERE pages_fts MATCH ? AND language = ? ORDER BY rank",
 		//Brug FTS
 		rows, err := queryDB(
-			"SELECT title, url, content, new_column FROM pages_fts WHERE pages_fts MATCH ? AND language = ?",
+			"SELECT title, url, content FROM pages_fts WHERE pages_fts MATCH ? AND language = ?",
 			query, language,
 		)
 
@@ -250,20 +249,15 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		// SQL-forespørgsel - finder sider i databasen, hvor 'content' matcher 'query'
 		for rows.Next() {
 			var title, url, content string
-			var newColumn sql.NullString // Add new column
-			if err := rows.Scan(&title, &url, &content, &newColumn); err != nil {
+			if err := rows.Scan(&title, &url, &content); err != nil {
 				http.Error(w, "Error reading row", http.StatusInternalServerError)
 				return
 			}
-			newColumnValue := ""
-			if newColumn.Valid {
-				newColumnValue = newColumn.String
-			}
+
 			searchResults = append(searchResults, map[string]string{
 				"title":       title,
 				"url":         url,
 				"description": content,
-				"new_column":  newColumnValue,
 			})
 		}
 	}
