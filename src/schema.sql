@@ -24,28 +24,41 @@ CREATE TABLE IF NOT EXISTS pages (
 -- Create virtual with fts.
 DROP TABLE IF EXISTS pages_fts;
 
-CREATE VIRTUAL TABLE pages_fts USING fts5(title, url, language);
+CREATE VIRTUAL TABLE pages_fts USING fts5(title, url, content, language);
 
 -- Getting data from pages and putting it into pages_fts table.
-INSERT INTO pages_fts (title, content, language)
-SELECT title, content, language FROM pages;
+INSERT INTO pages_fts (title, url, content, language)
+SELECT title, url, content, language FROM pages;
 
--- Trigger to keep FTS table updated on INSERT (Changed this bc og sonarQube)
-CREATE OR REPLACE TRIGGER pages_insert AFTER INSERT ON pages
+-- It can't make a "CREATE OR REPLACE", therefore we drop it first.
+DROP TABLE IF EXISTS pages_insert;
+-- creater a triigger to update pages_fts every time pages get updatet.
+CREATE TRIGGER pages_insert AFTER INSERT ON pages
 BEGIN
-  INSERT INTO pages_fts (title, content, language)
-  VALUES (NEW.title, NEW.content, NEW.language);
+  INSERT INTO pages_fts (title, url, content, language)
+  VALUES (NEW.title, NEW.url, NEW.content, NEW.language);
 END;
+
+-- This is to drop the table made in the earlier schema. just in case.
+DROP TRIGGER IF EXISTS pages_au;
+
+DROP TRIGGER IF EXISTS pages_update;
 
 -- Trigger to keep FTS table updated on UPDATE
-CREATE TRIGGER IF NOT EXISTS pages_au AFTER UPDATE ON pages
+CREATE TRIGGER pages_update AFTER UPDATE ON pages
 BEGIN
     DELETE FROM pages_fts WHERE title = OLD.title;
-    INSERT INTO pages_fts (title, content, language) VALUES (NEW.title, NEW.content, NEW.language);
+    INSERT INTO pages_fts (title, url, content, language) 
+    VALUES (NEW.title, NEW.url, NEW.content, NEW.language);
 END;
 
+-- Again this is to drop the table made in the earlier schema. Just in case.
+DROP TRIGGER IF EXISTS pages_ad;
+
+DROP TRIGGER IF EXISTS pages_delete;
+
 -- Trigger to keep FTS table updated on DELETE
-CREATE TRIGGER IF NOT EXISTS pages_ad AFTER DELETE ON pages
+CREATE TRIGGER pages_delete AFTER DELETE ON pages
 BEGIN
     DELETE FROM pages_fts WHERE title = OLD.title;
 END;

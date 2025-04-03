@@ -19,7 +19,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	// Database-connection. Go undersøtter ikke SQLite, og derfor skal vi importere en driver
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 
 	"github.com/gorilla/sessions"
 
@@ -234,10 +234,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		// Viser hvad der bliver sendt i SQL-forespørgelsen
 		fmt.Printf("Query: %s, Language: %s\n", query, language)
 
-		//"SELECT title, url, content, bm25(pages_fts) AS rank FROM pages_fts WHERE pages_fts MATCH ? AND language = ? ORDER BY rank",
 		
 		rows, err := queryDB(
-			"SELECT title, url, content FROM pages WHERE content LIKE '%' || ? || '%' AND language = ?",
+			"SELECT title, url, content, bm25(pages_fts) AS rank FROM pages_fts WHERE pages_fts MATCH ? AND language = ? ORDER BY rank",
 			query, language,
 		)			
 
@@ -252,7 +251,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		// SQL-forespørgsel - finder sider i databasen, hvor 'content' matcher 'query'
 		for rows.Next() {
 			var title, url, content string
-			if err := rows.Scan(&title, &url, &content); err != nil {
+			var rank float64
+			if err := rows.Scan(&title, &url, &content, &rank); err != nil {
 				http.Error(w, "Error reading row", http.StatusInternalServerError)
 				return
 			}
@@ -713,6 +713,8 @@ func main() {
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
 
 	fmt.Println("Server running on http://localhost:8080")
+	
+	fmt.Println(sqlite3.Version())
 	//Starter serveren.
 	log.Fatal(http.ListenAndServe(":8080", r))
 
