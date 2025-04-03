@@ -538,15 +538,35 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Indsæt brugeren i databasen
-	_, err = db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, hashedPassword)
+	result, err := db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, hashedPassword)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
+	
+	userID, err := result.LastInsertId()
+	if err != nil {
+		http.Error(w, "Failed to retrieve user ID", http.StatusInternalServerError)
+		return
+	}
 
-	// Redirect til login-siden
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	// Opret session og log brugeren ind
+	session, err := store.Get(r, "session-name")
+	if err != nil {
+		http.Error(w, "Session error", http.StatusInternalServerError)
+		return
+	}
+
+	session.Values["user_id"] = int(userID)
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Session save error", http.StatusInternalServerError)
+		return
+	}
+
+	// Omdiriger til forsiden (bruger er nu logget ind)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
+
 
 // Ser om brugere allerede eksisterer
 func userExists(username, email string) (bool, bool) {
