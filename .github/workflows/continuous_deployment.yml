@@ -31,19 +31,69 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}/GoSearch:latest
+          tags: ghcr.io/${{ github.repository }}/gosearch:latest
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    if: github.ref == 'refs/heads/main'
 
     steps:
-        - name: Copy file to server
+        - name: Create SSH key file
           run: |
-            scp -i ${{ secrets.SERVER_SSH_KEY }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/azureuser/GoSearch
+            mkdir -p ~/.ssh
+            echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/ssh_key
+            chmod 600 ~/.ssh/ssh_key
+            ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        
+        - name: Copy Docker-Compose to server
+          run: |
+            scp -i ~/.ssh/ssh_key ./docker-compose.dev.yml ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST}}:~/GoSearch/
 
-        - name: SSH into server
+        - name: Check docker installation
           run: |
-            ssh -i ${{ secrets.SERVER_SSH_KEY }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            EOF
+            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER}}@${{ secrets.SERVER_HOST}} << 'ENDSSH'
+              if ! command -v docker &> /dev/null; then
+                echo "Could not find docker, installing..."
+                sudo apt-get update
+                sudo apt-get install ca-certificates curl
+                sudo install -m 0755 -d /etc/apt/keyrings
+                sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+                sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+                architecture=$(dpkg --print-architecture) 
+                codename=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+                echo "deb [arch=${architecture} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${codename} stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                sudo apt-get update
+                sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              else
+                echo "Docker is already installed"
+              fi
+            ENDSSH
+
+          
+        - name: Check docker-compose installation
+          run: |
+            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER}}@${{ secrets.SERVER_HOST}} << "ENDSSH"
+              if ! command -v docker-compose &> /dev/null; then
+                echo "Could not find docker-compose, installing..."
+                sudo curl -SL https://github.com/docker/compose/releases/download/v2.34.0/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+                sudo chmod +x /usr/local/bin/docker-compose
+                sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+              else
+                echo "Docker-compose is already installed"  
+              fi
+            ENDSSH  
+
+
+
+        - name: Deploy to server
+          run: |
+            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            mkdir -p ~/GoSearch
+            cd ~/GoSearch
+            docker-compose -f docker-compose.dev.yml pull
+            docker-compose -f docker-compose.dev.yml up -d
+            ENDSSH
 
