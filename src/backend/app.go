@@ -103,7 +103,9 @@ func initDB() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
+
 }
+
 
 func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
@@ -158,6 +160,8 @@ func checkTables() {
 		fmt.Printf("Title: %s, URL: %s, Language: %s\n", page.Title, page.URL, page.Language)
 	}
 }
+
+
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Root handlers
@@ -230,12 +234,15 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		// Viser hvad der bliver sendt i SQL-forespørgelsen
 		fmt.Printf("Query: %s, Language: %s\n", query, language)
 
+		//"SELECT title, url, content, bm25(pages_fts) AS rank FROM pages_fts WHERE pages_fts MATCH ? AND language = ? ORDER BY rank",
+		
 		rows, err := queryDB(
-			"SELECT title, url, content, bm25(pages_fts) AS rank FROM pages_fts WHERE pages_fts MATCH ? AND language = ? ORDER BY rank",
+			"SELECT title, url, content FROM pages WHERE content LIKE '%' || ? || '%' AND language = ?",
 			query, language,
-		)		
+		)			
 
 		if err != nil {
+			log.Printf("Database error: %v", err)
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
@@ -531,15 +538,35 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Indsæt brugeren i databasen
-	_, err = db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, hashedPassword)
+	result, err := db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, hashedPassword)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
+	
+	userID, err := result.LastInsertId()
+	if err != nil {
+		http.Error(w, "Failed to retrieve user ID", http.StatusInternalServerError)
+		return
+	}
 
-	// Redirect til login-siden
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	// Opret session og log brugeren ind
+	session, err := store.Get(r, "session-name")
+	if err != nil {
+		http.Error(w, "Session error", http.StatusInternalServerError)
+		return
+	}
+
+	session.Values["user_id"] = int(userID)
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Session save error", http.StatusInternalServerError)
+		return
+	}
+
+	// Omdiriger til forsiden (bruger er nu logget ind)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
+
 
 // Ser om brugere allerede eksisterer
 func userExists(username, email string) (bool, bool) {
