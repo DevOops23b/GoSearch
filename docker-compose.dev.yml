@@ -18,5 +18,5 @@ services:
       - APP_ENV=development
       - LOG_LEVEL=debug
     restart: always  
-  volumes:
-      sqlite-data  
+volumes:
+      sqlite-data:
