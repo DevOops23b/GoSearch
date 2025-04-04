@@ -1,14 +1,18 @@
 package main
 
 import (
+    "io/ioutil"
 	"testing"
     "net/http"
     "net/http/httptest"
     "database/sql"
-    "github.com/gorilla/sessions"
     "net/url"
     "strings"
+    "github.com/gorilla/sessions"
+    _ "github.com/mattn/go-sqlite3"
+
     "golang.org/x/crypto/bcrypt"
+    "github.com/stretchr/testify/require"
     "github.com/DATA-DOG/go-sqlmock"
     "github.com/stretchr/testify/assert"
 )
@@ -194,6 +198,37 @@ func TestLogout(t *testing.T) {
     assert.Equal(t, -1, updatedSession.Options.MaxAge, "Session should be set to expire")
 }
 
+
+// Helper functions for integration tests
+func setupTestDatabase() (*sql.DB, error){
+    // In memory sqlite
+    db, err := sql.Open("sqlite3", ":memory:")
+    if err != nil {
+        return nil, err
+    }
+
+    _, err = db.Exec(
+        `CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+        )
+        `)
+
+    if err != nil {
+        return nil, err
+    }
+
+    return db, nil
+}
+
+// Integration test for login
+/*
+func TestLoginIntegration(t *testing.T) {
+    // Setup test database
+    testDB, err := setupTestDatabase()
+}
+*/
 
 
 
