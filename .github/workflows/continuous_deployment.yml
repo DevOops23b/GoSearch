@@ -52,7 +52,6 @@ jobs:
             echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/ssh_key
             chmod 600 ~/.ssh/ssh_key
             ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-            cat ~/.ssh/ssh_key | grep -v "KEY" | wc -c
         
         - name: Copy Docker-Compose to server
           run: |
@@ -77,23 +76,16 @@ jobs:
             else
               echo "Docker is already installed"
             fi
-            EOF
-
-          
-        - name: Check docker-compose installation
-          run: |
-            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            
             if ! command -v docker-compose &> /dev/null; then
               echo "Could not find docker-compose, installing..."
               sudo curl -SL https://github.com/docker/compose/releases/download/v2.34.0/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
               sudo chmod +x /usr/local/bin/docker-compose
               sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
             else
-              echo "Docker-compose is already installed"  
+              echo "Docker-compose is already installed"
             fi
-            EOF  
-
-
+            EOF
 
         - name: Deploy to server
           run: |
