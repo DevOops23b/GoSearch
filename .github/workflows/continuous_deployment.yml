@@ -52,7 +52,6 @@ jobs:
             echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/ssh_key
             chmod 600 ~/.ssh/ssh_key
             ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-            cat ~/.ssh/ssh_key | grep -v "KEY" | wc -c
         
         - name: Copy Docker-Compose to server
           run: |
@@ -78,7 +77,6 @@ jobs:
               echo "Docker is already installed"
             fi
             EOF
-
           
         - name: Check docker-compose installation
           run: |
@@ -91,7 +89,7 @@ jobs:
             else
               echo "Docker-compose is already installed"  
             fi
-            EOF  
+            EOF
 
 
 
