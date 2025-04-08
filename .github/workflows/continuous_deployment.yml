@@ -31,7 +31,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/DevOops23b/gosearch:latest
+          tags: ghcr.io/devoops23b/gosearch:latest
 
   deploy:
     runs-on: ubuntu-latest
