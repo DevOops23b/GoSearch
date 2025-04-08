@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/DevOops23b/gosearch:latest
+    image: ghcr.io/devoops23b/gosearch:latest
     container_name: go-app
     volumes:
       - ./src/backend/app.go:/app/src/backend
