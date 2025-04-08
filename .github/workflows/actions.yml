@@ -24,9 +24,20 @@ jobs:
         with:
           go-version: 1.21  
 
+
+      - name: Clean Go cache
+        run: |
+          go clean -modcache
+          rm -rf $GOPATH/pkg/mod
+          rm -rf ~/.cache/go-build
+
+
+
       - name: Install dependencies
         working-directory: ./src/backend
-        run: go mod tidy
+        run: |
+          go mod tidy
+          go mod download
 
       - name: Run tests
         working-directory: ./src/backend
@@ -35,6 +46,11 @@ jobs:
       - name: Build application
         working-directory: ./src/backend
         run: go build -v .
+
+      - uses: actions/checkout@v3
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
 
   lint:
     name: Lint
@@ -49,6 +65,12 @@ jobs:
         with:
           go-version: 1.21
 
+      - name: Clean Go cache
+        run: |
+          go clean -modcache
+          rm -rf $GOPATH/pkg/mod
+          rm -rf ~/.cache/go-build
+      
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
