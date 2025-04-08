@@ -91,7 +91,11 @@ jobs:
             fi
             EOF
 
-
+        - name: Add user to Docker group
+          run: |
+            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            sudo usermod -aG docker ${{ secrets.SERVER_USER }}
+            EOF
 
         - name: Deploy to server
           run: |
