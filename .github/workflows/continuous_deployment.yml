@@ -97,7 +97,7 @@ jobs:
 
         - name: Deploy to server
           run: |
-            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             mkdir -p ~/GoSearch
             cd ~/GoSearch
