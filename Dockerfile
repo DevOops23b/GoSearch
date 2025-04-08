@@ -9,7 +9,7 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-COPY src ./src/backend
+COPY src ./src
 
 # Disables CGO and specifies the name for the compiled application as app
 RUN CGO_ENABLED=0 GOOS=linux go build -o app ./src/backend
@@ -20,9 +20,9 @@ USER nonroot
 
 COPY --from=builder /app/app /app/app
 
-WORKDIR /app/src/backend
+WORKDIR /app
 
-COPY src/frontend /app/src/frontend
+COPY src /app/src
 
 EXPOSE 8080
 
