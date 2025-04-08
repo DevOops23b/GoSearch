@@ -43,6 +43,9 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
+        - name: Checkout code
+          uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
         - name: Create SSH key file
           run: |
             mkdir -p ~/.ssh
