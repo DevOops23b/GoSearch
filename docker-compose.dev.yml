@@ -9,7 +9,7 @@ services:
       - ./src/backend:/app/src/backend
       - ./src/whoknows.db:/app/src/gosearch.dev.db
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       - DATABASE_PATH=/app/src/gosearch.dev.db
       - APP_ENV=development
