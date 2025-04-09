@@ -26,10 +26,7 @@ WORKDIR /app
 COPY --from=builder /app/app /app/app
 COPY src /app/src
 
-RUN mkdir -p /app/frontend/templates
-
-RUN find /app -type d | sort
-COPY src/frontend/templates /app/src/frontend/templates
+WORKDIR /app/src/backend
 
 USER nonroot
 
