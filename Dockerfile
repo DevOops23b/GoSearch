@@ -16,6 +16,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o app ./src/backend
 
 FROM alpine:3.21.3
 
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
 RUN addgroup -S nonroot \
     && adduser -S nonroot -G nonroot
 
