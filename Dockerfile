@@ -19,13 +19,14 @@ FROM alpine:3.21.3
 RUN addgroup -S nonroot \
     && adduser -S nonroot -G nonroot
 
-USER nonroot
-
-COPY --from=builder /app/app /app/app
-
 WORKDIR /app
 
+COPY --from=builder /app/app /app/app
 COPY src /app/src
+
+RUN mkdir -p /app/frontend && ln -s /app/src/frontend/templates /app/frontend/templates
+
+USER nonroot
 
 EXPOSE 8080
 
