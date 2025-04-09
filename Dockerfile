@@ -1,6 +1,6 @@
 FROM golang:1.24.0-alpine AS builder
 
-RUN apk add --no-cache sqlite-dev
+RUN apk add --no-cache sqlite-dev build-base
 
 RUN addgroup -S nonroot \
     && adduser -S nonroot -G nonroot
