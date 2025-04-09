@@ -16,6 +16,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o app ./src/backend
 
 FROM alpine:3.21.3
 
+RUN addgroup -S nonroot \
+    && adduser -S nonroot -G nonroot
+
 USER nonroot
 
 COPY --from=builder /app/app /app/app
