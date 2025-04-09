@@ -24,7 +24,8 @@ WORKDIR /app
 COPY --from=builder /app/app /app/app
 COPY src /app/src
 
-RUN mkdir -p /app/frontend && ln -s /app/src/frontend/templates /app/frontend/templates
+RUN mkdir -p /app/frontend && \
+    cp -r /app/src/frontend/templates/* /app/frontend/templates/
 
 USER nonroot
 
