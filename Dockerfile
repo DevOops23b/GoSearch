@@ -24,8 +24,16 @@ WORKDIR /app
 COPY --from=builder /app/app /app/app
 COPY src /app/src
 
-RUN mkdir -p /app/frontend && \
-    cp -r /app/src/frontend/templates/* /app/frontend/templates/
+RUN mkdir -p /app/frontend/templates
+
+RUN find /app -type d | sort
+
+RUN if [ -d "/app/src/frontend/templates" ]; then \
+        cp -r /app/src/frontend/templates/* /app/frontend/templates/; \
+    else \
+        echo "Templates directory not found at expected location"; \
+        find /app -name "*.html" | sort; \
+    fi
 
 USER nonroot
 
