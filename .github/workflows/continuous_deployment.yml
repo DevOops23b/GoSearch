@@ -91,6 +91,13 @@ jobs:
             fi
             EOF
 
+        - name: Stop and remove existing container
+          run: |
+            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            docker stop go-app 2>/dev/null || true
+            docker rm go-app 2>/dev/null || true
+            EOF
+
         - name: Add user to Docker group
           run: |
             ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
@@ -105,5 +112,12 @@ jobs:
             cd ~/GoSearch
             docker-compose -f docker-compose.dev.yml pull
             docker-compose -f docker-compose.dev.yml up -d
+            EOF
+
+        - name: Clean up Docker resources
+          run: |
+            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            docker container prune -f
+            docker image prune -f
             EOF
 
