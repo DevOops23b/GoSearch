@@ -6,15 +6,12 @@ services:
     image: ghcr.io/devoops23b/gosearch:latest
     container_name: go-app
     volumes:
-      - ./src/backend/app.go:/app/src/backend
+      - ./src/backend:/app/src/backend
       - ./src/whoknows.db:/app/src/gosearch.dev.db
-      - sqlite-data:/app/src/gosearch.dev.db
-    ports: 
+    ports:
       - "8080:8080"
     environment:
       - DATABASE_PATH=/app/src/gosearch.dev.db
       - APP_ENV=development
       - LOG_LEVEL=debug
-    restart: always  
-volumes:
-      sqlite-data:
+    restart: always
