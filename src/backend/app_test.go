@@ -222,13 +222,32 @@ func setupTestDatabase() (*sql.DB, error){
     return db, nil
 }
 
+// Create test user
+func createTestUser(t *testing .T, db *sql.DB, username, password string) {
+    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+    require.NoError(t, err, "Failed to hash the password")
+
+    _, err = db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", username, string(hashedPassword))
+    require.NoError(t, err, "Failed to add user")
+}
+
 // Integration test for login
-/*
 func TestLoginIntegration(t *testing.T) {
     // Setup test database
     testDB, err := setupTestDatabase()
+
+    require.NoError(t, err, "Failed to set up test database")
+    defer testDB.Close()
+
+
+    // Replace global DB with test DB
+    originalDB := db
+    db = testDB
+    defer func() { db = originalDB}()
+
+
 }
-*/
+
 
 
 
