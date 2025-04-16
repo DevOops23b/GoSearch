@@ -763,20 +763,16 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Indsæt brugeren i databasen
-	result, err := db.Exec("INSERT INTO users (username, email, password) VALUES ($1, $2, $3)", username, email, hashedPassword)
+	var userID int
+	err = db.QueryRow("INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id",
+		username, email, hashedPassword).Scan(&userID)
+
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	userID, err := result.LastInsertId()
-	if err != nil {
-		http.Error(w, "Failed to retrieve user ID", http.StatusInternalServerError)
-		return
-	}
-
-	// Opret session og log brugeren ind
+	// Create session and log the user in
 	session, err := store.Get(r, "session-name")
 	if err != nil {
 		http.Error(w, "Session error", http.StatusInternalServerError)
@@ -797,18 +793,26 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 func userExists(username, email string) (bool, bool) {
 	var usernameExists, emailExists bool
 
+	//Use a transaction to ensure consistent reads
+	tx, err := db.Begin()
+	if err != nil {
+		return false, false
+	}
+	defer tx.Rollback()
+
 	// Tjekker for eksisterende brugernavn
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=$1)", username).Scan(&usernameExists)
-	if err != nil && err != sql.ErrNoRows {
-		return false, false // Fejl i forespørgslen
+	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(username) = LOWER))", username).Scan(&usernameExists)
+	if err != nil {
+		return false, false
 	}
 
 	// Tjekker for eksisterende email
-	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email=$1)", email).Scan(&emailExists)
-	if err != nil && err != sql.ErrNoRows {
+	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(email) = LOWER($1))", email).Scan(&emailExists)
+	if err != nil {
 		return false, false // Fejl i forespørgslen
 	}
 
+	tx.Commit()
 	return usernameExists, emailExists
 }
 
