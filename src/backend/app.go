@@ -1,12 +1,18 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 	"time"
+
+	//Elasticsearch v8 client
+	"github.com/elastic/go-elasticsearch/v8"
 
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
@@ -25,17 +31,28 @@ import (
 
 	"github.com/robfig/cron/v3"
 	// Import the cron library to schedule periodic tasks
+
+	// PostgreSQL driver instead of SQLite.
+	_ "github.com/lib/pq"
 )
 
 ///////////////////////////////////////////////////////////////////////////////////
 /// Configurations
 ///////////////////////////////////////////////////////////////////////////////////
 
-const (
-	DATABASE_PATH = "../whoknows.db"
-)
+var CONN_STR string
+
+func init() {
+	connStr := os.Getenv("CONN_STR")
+	if connStr != "" {
+		CONN_STR = connStr
+	} else {
+		CONN_STR = "host=localhost port=5432 user=youruser password=yourpassword dbname=whoknows sslmode=disable"
+	}
+}
 
 var db *sql.DB
+var esClient *elasticsearch.Client
 
 var store = sessions.NewCookieStore([]byte("Very-secret-key"))
 
@@ -63,7 +80,7 @@ type Page struct {
 }
 
 type WeatherResponse struct {
-	Name string `jason:"name"`
+	Name string `json:"name"`
 	Main struct {
 		Temp float64 `json:"temp"`
 	} `json:"main"`
@@ -76,24 +93,29 @@ type WeatherResponse struct {
 /// Database Functions
 //////////////////////////////////////////////////////////////////////////////////
 
-func checkDBExists() bool {
-	if _, err := os.Stat(DATABASE_PATH); os.IsNotExist(err) {
-		fmt.Println("Database not found")
-		return false
-	}
-	return true
-}
-
 func connectDB() (*sql.DB, error) {
-	if !checkDBExists() {
-		log.Fatal("Database does not exist")
-	}
+	var db *sql.DB
+	var err error
 
-	db, err := sql.Open("sqlite3", DATABASE_PATH)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %v", err)
+	maxRetries := 10
+	retryDelay := time.Second * 5
+
+	for i := 0; i < maxRetries; i++ {
+		db, err = sql.Open("postgres", CONN_STR)
+		if err != nil {
+			log.Printf("Failed to connect to database (attempt %d/%d): %v", i+1, maxRetries, err)
+			time.Sleep(retryDelay)
+			continue
+		}
+		err = db.Ping()
+		if err == nil {
+			log.Println("Successfully connected to PostgresSQL!")
+			return db, nil
+		}
+		log.Printf("Database ping failed (attempt %d/%d): %v", i+1, maxRetries, err)
+		time.Sleep(retryDelay)
 	}
-	return db, nil
+	return nil, fmt.Errorf("failed to connect to database after %d attempts", maxRetries)
 
 }
 
@@ -103,9 +125,134 @@ func initDB() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
+	if err = db.Ping(); err != nil {
+		log.Fatalf("PostgresSQL ping failed: %v", err)
+	}
+	log.Println("Connected to PostgresSQL!")
 
 }
 
+func initializeDatabase() error {
+	// Read schema.sql file
+	schemaBytes, err := os.ReadFile("../schema.sql")
+	if err != nil {
+		return fmt.Errorf("error reading schema file: %v", err)
+	}
+
+	// Convert SQLite schema to PostgreSQL
+	schema := string(schemaBytes)
+
+	// Replace SQLite-specific syntax with PostgreSQL syntax
+	schema = strings.ReplaceAll(schema, "INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+	schema = strings.ReplaceAll(schema, "AUTOINCREMENT", "")
+	schema = strings.ReplaceAll(schema, "INTEGER PRIMARY KEY", "SERIAL PRIMARY KEY")
+	schema = strings.ReplaceAll(schema, "DATETIME", "TIMESTAMP")
+
+	// In PostgreSQL, we need to execute each statement separately
+	statements := strings.Split(schema, ";")
+
+	for _, stmt := range statements {
+		// Skip empty statements
+		trimmedStmt := strings.TrimSpace(stmt)
+		if trimmedStmt == "" {
+			continue
+		}
+
+		// Execute the SQL statement
+		_, err = db.Exec(trimmedStmt)
+		if err != nil {
+			return fmt.Errorf("error executing schema statement: %v\nStatement: %s", err, trimmedStmt)
+		}
+	}
+
+	log.Println("Database tables initialized successfully!")
+	return nil
+}
+func migrateFromSQLite() error {
+	// Open SQLite database
+	sqliteDB, err := sql.Open("sqlite3", "../whoknows.db")
+	if err != nil {
+		return fmt.Errorf("error opening SQLite database: %v", err)
+	}
+	defer sqliteDB.Close()
+
+	// Migrate users table
+	if err := migrateUsersTable(sqliteDB); err != nil {
+		return err
+	}
+
+	// Migrate pages table
+	if err := migratePagesTable(sqliteDB); err != nil {
+		return err
+	}
+
+	log.Println("Data migration completed successfully!")
+	return nil
+}
+
+func migrateUsersTable(sqliteDB *sql.DB) error {
+	// Get users from SQLite
+	rows, err := sqliteDB.Query("SELECT id, username, email, password FROM users")
+	if err != nil {
+		if strings.Contains(err.Error(), "no such table") {
+			log.Println("No users table found in SQLite, skipping migration")
+			return nil
+		}
+		return fmt.Errorf("error querying users from SQLite: %v", err)
+	}
+	defer rows.Close()
+
+	// Migrate each user
+	for rows.Next() {
+		var user User
+		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password); err != nil {
+			return fmt.Errorf("error scanning user from SQLite: %v", err)
+		}
+
+		// Insert into PostgreSQL
+		_, err = db.Exec(
+			"INSERT INTO users (id, username, email, password) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING",
+			user.ID, user.Username, user.Email, user.Password)
+		if err != nil {
+			return fmt.Errorf("error inserting user into PostgreSQL: %v", err)
+		}
+	}
+
+	log.Println("Users migration completed")
+	return nil
+}
+
+func migratePagesTable(sqliteDB *sql.DB) error {
+	// Get pages from SQLite
+	rows, err := sqliteDB.Query("SELECT title, url, language, last_updated, content FROM pages")
+	if err != nil {
+		if strings.Contains(err.Error(), "no such table") {
+			log.Println("No pages table found in SQLite, skipping migration")
+			return nil
+		}
+		return fmt.Errorf("error querying pages from SQLite: %v", err)
+	}
+	defer rows.Close()
+
+	// Migrate each page
+	for rows.Next() {
+		var page Page
+		if err := rows.Scan(&page.Title, &page.URL, &page.Language, &page.LastUpdated, &page.Content); err != nil {
+			return fmt.Errorf("error scanning page from SQLite: %v", err)
+		}
+
+		// Insert into PostgreSQL
+		_, err = db.Exec(
+			"INSERT INTO pages (title, url, language, last_updated, content) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (url) DO NOTHING",
+			page.Title, page.URL, page.Language, page.LastUpdated, page.Content)
+		if err != nil {
+			return fmt.Errorf("error inserting page into PostgreSQL: %v", err)
+		}
+	}
+
+	log.Println("Pages migration completed")
+	return nil
+}
 
 func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
@@ -161,7 +308,108 @@ func checkTables() {
 	}
 }
 
+// /////////////////////////////////////////////////////////////////////////////////
+// Elasticsearch Functions & Integration
+// /////////////////////////////////////////////////////////////////////////////////
+func initElasticsearch() {
+	var err error
+	maxRetries := 10
+	retryDelay := time.Second * 5
 
+	esHost := os.Getenv("ES_HOST")
+	if esHost == "" {
+		esHost = "elasticsearch"
+	}
+
+	for i := 0; i < maxRetries; i++ {
+		// Try both HTTPS and HTTP connections
+		configs := []elasticsearch.Config{
+			// Try HTTP first
+			{
+				Addresses: []string{fmt.Sprintf("http://%s:9200", esHost)},
+				Username:  "elastic",
+				Password:  "changeme",
+			},
+			// Try HTTPS as fallback
+			{
+				Addresses: []string{fmt.Sprintf("https://%s:9200", esHost)},
+				Username:  "elastic",
+				Password:  "changeme",
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				},
+			},
+		}
+
+		// Try each config until one works
+		for _, config := range configs {
+			esClient, err = elasticsearch.NewClient(config)
+			if err != nil {
+				log.Printf("Error creating Elasticsearch client with config %v: %s", config.Addresses, err)
+				continue
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			res, err := esClient.Info(esClient.Info.WithContext(ctx))
+			cancel()
+
+			if err == nil {
+				defer res.Body.Close()
+				log.Printf("Successfully connected to Elasticsearch via %s", config.Addresses[0])
+				return
+			}
+
+			log.Printf("Error connecting to Elasticsearch via %s: %v", config.Addresses[0], err)
+		}
+
+		log.Printf("Could not connect to Elasticsearch (attempt %d/%d). Retrying in %v...",
+			i+1, maxRetries, retryDelay)
+		time.Sleep(retryDelay)
+	}
+
+	log.Fatalf("Failed to connect to Elasticsearch after %d attempts", maxRetries)
+}
+
+func searchPagesInEs(query string) ([]Page, error) {
+	var pages []Page
+	//Building a simple match query for the "content" field
+	searchBody := strings.NewReader(fmt.Sprintf(`{
+		"query": {
+			"match":{
+			"content": "%s"
+			}
+		}
+	}`, query))
+
+	res, err := esClient.Search(
+		esClient.Search.WithContext(context.Background()),
+		esClient.Search.WithIndex("pages"),
+		esClient.Search.WithBody(searchBody),
+		esClient.Search.WithTrackTotalHits(true),
+	)
+	if err != nil {
+		return pages, err
+	}
+	defer res.Body.Close()
+
+	//Parse ES result
+	var r struct {
+		Hits struct {
+			Hits []struct {
+				Source Page `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
+		return pages, err
+	}
+	for _, hit := range r.Hits.Hits {
+		pages = append(pages, hit.Source)
+	}
+	return pages, nil
+}
 
 //////////////////////////////////////////////////////////////////////////////////
 /// Root handlers
@@ -220,64 +468,42 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 // Viser search api-server.
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
-	query := strings.TrimSpace(r.URL.Query().Get("q"))
-	language := r.URL.Query().Get("language")
-
-	if language == "" {
-		language = "en"
-	}
-
-	//Henter query-parameterne
-	var searchResults []map[string]string
-	if query != "" {
-
-		// Viser hvad der bliver sendt i SQL-forespørgelsen
-		fmt.Printf("Query: %s, Language: %s\n", query, language)
-
-		//"SELECT title, url, content, bm25(pages_fts) AS rank FROM pages_fts WHERE pages_fts MATCH ? AND language = ? ORDER BY rank",
-		
-		rows, err := queryDB(
-			"SELECT title, url, content FROM pages WHERE content LIKE '%' || ? || '%' AND language = ?",
-			query, language,
-		)			
-
-		if err != nil {
-			log.Printf("Database error: %v", err)
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
-
-		defer rows.Close()
-
-		// SQL-forespørgsel - finder sider i databasen, hvor 'content' matcher 'query'
-		for rows.Next() {
-			var title, url, content string
-			if err := rows.Scan(&title, &url, &content); err != nil {
-				http.Error(w, "Error reading row", http.StatusInternalServerError)
-				return
-			}
-			searchResults = append(searchResults, map[string]string{
-				"title":       title,
-				"url":         url,
-				"description": content,
-			})
-		}
-	}
-
-	//indlæser search.htmlmed resultater
-	tmpl, err := template.ParseFiles("../frontend/templates/search.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
+	queryParam := strings.TrimSpace(r.URL.Query().Get("q"))
+	if queryParam == "" {
+		http.Error(w, "No search query provided", http.StatusBadRequest)
 		return
 	}
 
-	// sender data til html-templaten
+	//Nuild search against Elasticsearch
+	pages, err := searchPagesInEs(queryParam)
+	if err != nil {
+		log.Printf("Error searching Elasticsearch: %v", err)
+		http.Error(w, "Error during search", http.StatusInternalServerError)
+		return
+	}
+
+	// Build search results from Elasticsearch response
+	var searchResults []map[string]string
+	for _, page := range pages {
+		searchResults = append(searchResults, map[string]string{
+			"title":       page.Title,
+			"url":         page.URL,
+			"description": page.Content,
+		})
+	}
+
+	tmpl, err := template.ParseFiles("../frontend/templates/search.html")
+	if err != nil {
+		http.Error(w, "Error loading search template", http.StatusInternalServerError)
+		return
+	}
+
 	if err := tmpl.Execute(w, map[string]interface{}{
-		"Query":   query,
+		"Query":   queryParam,
 		"Results": searchResults,
 	}); err != nil {
-		log.Printf("Error executing template: %v", err)
-		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		log.Printf("Error executing search template: %v", err)
+		http.Error(w, "Error rengering search results", http.StatusInternalServerError)
 	}
 }
 
@@ -394,7 +620,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	var user User
 
 	// Finds the user in the db based on the username
-	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = ?", username).Scan(&user.ID, &user.Username, &user.Password)
+	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = $1", username).Scan(&user.ID, &user.Username, &user.Password)
 
 	// If the username is not found in th db or password is incorrect
 	if err == sql.ErrNoRows || !validatePassword(user.Password, password) {
@@ -538,12 +764,12 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Indsæt brugeren i databasen
-	result, err := db.Exec("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", username, email, hashedPassword)
+	result, err := db.Exec("INSERT INTO users (username, email, password) VALUES ($1, $2, $3)", username, email, hashedPassword)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
-	
+
 	userID, err := result.LastInsertId()
 	if err != nil {
 		http.Error(w, "Failed to retrieve user ID", http.StatusInternalServerError)
@@ -567,19 +793,18 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-
 // Ser om brugere allerede eksisterer
 func userExists(username, email string) (bool, bool) {
 	var usernameExists, emailExists bool
 
 	// Tjekker for eksisterende brugernavn
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=?)", username).Scan(&usernameExists)
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username=$1)", username).Scan(&usernameExists)
 	if err != nil && err != sql.ErrNoRows {
 		return false, false // Fejl i forespørgslen
 	}
 
 	// Tjekker for eksisterende email
-	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email=?)", email).Scan(&emailExists)
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email=$1)", email).Scan(&emailExists)
 	if err != nil && err != sql.ErrNoRows {
 		return false, false // Fejl i forespørgslen
 	}
@@ -626,7 +851,6 @@ func isValidEmail(email string) bool {
 //////////////////////////////////////////////////////////////////////////////////
 /// Weather handler
 //////////////////////////////////////////////////////////////////////////////////
-
 
 func weatherHandler(w http.ResponseWriter, r *http.Request) {
 	city := r.URL.Query().Get("city")
@@ -700,16 +924,28 @@ func main() {
 	initDB()
 	defer closeDB()
 
+	// Check if tables exist in PostgreSQL
+	var tableCount int
+	err := db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'").Scan(&tableCount)
+	if err != nil || tableCount == 0 {
+		log.Println("Initializing database schema...")
+		if err := initializeDatabase(); err != nil {
+			log.Fatalf("Failed to initialize database: %v", err)
+		}
+
+		log.Println("Migrating data from SQLite...")
+		if err := migrateFromSQLite(); err != nil {
+			log.Printf("Warning: data migration failed: %v", err)
+		}
+	}
+
+	//Initialize Elasticsearch
+	initElasticsearch()
+
 	checkTables()
 
 	// Start the cron scheduler to run checkTables periodically
 	startCronScheduler()
-
-	err := db.Ping()
-	if err != nil {
-		log.Fatalf("Database connection failed: %v", err)
-	}
-	fmt.Println("Database connection successful!")
 
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
