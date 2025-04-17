@@ -31,7 +31,6 @@ import (
 
 	"github.com/robfig/cron/v3"
 	// Import the cron library to schedule periodic tasks
-
 	// PostgreSQL driver instead of SQLite.
 	_ "github.com/lib/pq"
 )
@@ -47,7 +46,7 @@ func init() {
 	if connStr != "" {
 		CONN_STR = connStr
 	} else {
-		CONN_STR = "host=localhost port=5432 user=youruser password=yourpassword dbname=whoknows sslmode=disable"
+		CONN_STR = "postgres://youruser:yourpassword@localhost:5432/whoknows?sslmode=disable"
 	}
 }
 
@@ -130,128 +129,6 @@ func initDB() {
 	}
 	log.Println("Connected to PostgresSQL!")
 
-}
-
-func initializeDatabase() error {
-	// Read schema.sql file
-	schemaBytes, err := os.ReadFile("../schema.sql")
-	if err != nil {
-		return fmt.Errorf("error reading schema file: %v", err)
-	}
-
-	// Convert SQLite schema to PostgreSQL
-	schema := string(schemaBytes)
-
-	// Replace SQLite-specific syntax with PostgreSQL syntax
-	schema = strings.ReplaceAll(schema, "INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
-	schema = strings.ReplaceAll(schema, "AUTOINCREMENT", "")
-	schema = strings.ReplaceAll(schema, "INTEGER PRIMARY KEY", "SERIAL PRIMARY KEY")
-	schema = strings.ReplaceAll(schema, "DATETIME", "TIMESTAMP")
-
-	// In PostgreSQL, we need to execute each statement separately
-	statements := strings.Split(schema, ";")
-
-	for _, stmt := range statements {
-		// Skip empty statements
-		trimmedStmt := strings.TrimSpace(stmt)
-		if trimmedStmt == "" {
-			continue
-		}
-
-		// Execute the SQL statement
-		_, err = db.Exec(trimmedStmt)
-		if err != nil {
-			return fmt.Errorf("error executing schema statement: %v\nStatement: %s", err, trimmedStmt)
-		}
-	}
-
-	log.Println("Database tables initialized successfully!")
-	return nil
-}
-func migrateFromSQLite() error {
-	// Open SQLite database
-	sqliteDB, err := sql.Open("sqlite3", "../whoknows.db")
-	if err != nil {
-		return fmt.Errorf("error opening SQLite database: %v", err)
-	}
-	defer sqliteDB.Close()
-
-	// Migrate users table
-	if err := migrateUsersTable(sqliteDB); err != nil {
-		return err
-	}
-
-	// Migrate pages table
-	if err := migratePagesTable(sqliteDB); err != nil {
-		return err
-	}
-
-	log.Println("Data migration completed successfully!")
-	return nil
-}
-
-func migrateUsersTable(sqliteDB *sql.DB) error {
-	// Get users from SQLite
-	rows, err := sqliteDB.Query("SELECT id, username, email, password FROM users")
-	if err != nil {
-		if strings.Contains(err.Error(), "no such table") {
-			log.Println("No users table found in SQLite, skipping migration")
-			return nil
-		}
-		return fmt.Errorf("error querying users from SQLite: %v", err)
-	}
-	defer rows.Close()
-
-	// Migrate each user
-	for rows.Next() {
-		var user User
-		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password); err != nil {
-			return fmt.Errorf("error scanning user from SQLite: %v", err)
-		}
-
-		// Insert into PostgreSQL
-		_, err = db.Exec(
-			"INSERT INTO users (id, username, email, password) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING",
-			user.ID, user.Username, user.Email, user.Password)
-		if err != nil {
-			return fmt.Errorf("error inserting user into PostgreSQL: %v", err)
-		}
-	}
-
-	log.Println("Users migration completed")
-	return nil
-}
-
-func migratePagesTable(sqliteDB *sql.DB) error {
-	// Get pages from SQLite
-	rows, err := sqliteDB.Query("SELECT title, url, language, last_updated, content FROM pages")
-	if err != nil {
-		if strings.Contains(err.Error(), "no such table") {
-			log.Println("No pages table found in SQLite, skipping migration")
-			return nil
-		}
-		return fmt.Errorf("error querying pages from SQLite: %v", err)
-	}
-	defer rows.Close()
-
-	// Migrate each page
-	for rows.Next() {
-		var page Page
-		if err := rows.Scan(&page.Title, &page.URL, &page.Language, &page.LastUpdated, &page.Content); err != nil {
-			return fmt.Errorf("error scanning page from SQLite: %v", err)
-		}
-
-		// Insert into PostgreSQL
-		_, err = db.Exec(
-			"INSERT INTO pages (title, url, language, last_updated, content) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (url) DO NOTHING",
-			page.Title, page.URL, page.Language, page.LastUpdated, page.Content)
-		if err != nil {
-			return fmt.Errorf("error inserting page into PostgreSQL: %v", err)
-		}
-	}
-
-	log.Println("Pages migration completed")
-	return nil
 }
 
 func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
@@ -374,11 +251,12 @@ func initElasticsearch() {
 
 func searchPagesInEs(query string) ([]Page, error) {
 	var pages []Page
-	//Building a simple match query for the "content" field
+
 	searchBody := strings.NewReader(fmt.Sprintf(`{
 		"query": {
-			"match":{
-			"content": "%s"
+			"multi_match": {
+				"query": "%s",
+				"fields": ["title^3", "url^2", "content"]
 			}
 		}
 	}`, query))
@@ -394,7 +272,6 @@ func searchPagesInEs(query string) ([]Page, error) {
 	}
 	defer res.Body.Close()
 
-	//Parse ES result
 	var r struct {
 		Hits struct {
 			Hits []struct {
@@ -402,13 +279,54 @@ func searchPagesInEs(query string) ([]Page, error) {
 			} `json:"hits"`
 		} `json:"hits"`
 	}
+
 	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
 		return pages, err
 	}
+
 	for _, hit := range r.Hits.Hits {
 		pages = append(pages, hit.Source)
 	}
+
 	return pages, nil
+}
+
+func syncPagesToElasticsearch() error {
+	rows, err := db.Query("SELECT title, url, content FROM pages")
+	if err != nil {
+		return fmt.Errorf("error querying pages from DB: %w", err)
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		var page Page
+		if err := rows.Scan(&page.Title, &page.URL, &page.Content); err != nil {
+			log.Printf("Error scanning row: %v", err)
+			continue
+		}
+
+		doc, err := json.Marshal(page)
+		if err != nil {
+			log.Printf("Error marshaling page: %v", err)
+			continue
+		}
+
+		// Index the document without specifying a document type
+		_, err = esClient.Index(
+			"pages",                            // Index name
+			strings.NewReader(string(doc)),     // JSON document
+			esClient.Index.WithRefresh("true"), // Refresh immediately
+		)
+		if err != nil {
+			log.Printf("Error indexing page to ES: %v", err)
+			continue
+		}
+
+		count++
+	}
+	log.Printf("Synced %d pages to Elasticsearch", count)
+	return nil
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -928,23 +846,12 @@ func main() {
 	initDB()
 	defer closeDB()
 
-	// Check if tables exist in PostgreSQL
-	var tableCount int
-	err := db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'").Scan(&tableCount)
-	if err != nil || tableCount == 0 {
-		log.Println("Initializing database schema...")
-		if err := initializeDatabase(); err != nil {
-			log.Fatalf("Failed to initialize database: %v", err)
-		}
-
-		log.Println("Migrating data from SQLite...")
-		if err := migrateFromSQLite(); err != nil {
-			log.Printf("Warning: data migration failed: %v", err)
-		}
-	}
-
 	//Initialize Elasticsearch
 	initElasticsearch()
+
+	if err := syncPagesToElasticsearch(); err != nil {
+		log.Fatalf("Failed to sync pages: %v", err)
+	}
 
 	checkTables()
 

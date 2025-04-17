@@ -21,6 +21,7 @@ services:
       elasticsearch:
         condition: service_healthy
     restart: always
+    command: sh -c "npx knex migrate:latest && go run main.go"
 
   postgres:
     image: postgres:13
