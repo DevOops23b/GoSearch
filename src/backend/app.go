@@ -716,10 +716,15 @@ func userExists(username, email string) (bool, bool) {
 	if err != nil {
 		return false, false
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("Rollback error: %v", err)
+		}
+	}()
 
 	// Tjekker for eksisterende brugernavn
-	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(username) = LOWER))", username).Scan(&usernameExists)
+	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(username) = LOWER($1))", username).Scan(&usernameExists)
 	if err != nil {
 		return false, false
 	}
@@ -727,10 +732,13 @@ func userExists(username, email string) (bool, bool) {
 	// Tjekker for eksisterende email
 	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(email) = LOWER($1))", email).Scan(&emailExists)
 	if err != nil {
-		return false, false // Fejl i forespørgslen
+		return false, false
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		log.Printf("Commit error: %v", err)
+		return false, false
+	}
 	return usernameExists, emailExists
 }
 
