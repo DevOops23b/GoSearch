@@ -1,4 +1,4 @@
-// NOTE: Place this file in the same directory as app.go (project root) and name it `integration_test.go`
+
 package main
 
 import (
@@ -15,7 +15,7 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-// setupRouter duplicates your main() route setup for testing.
+// setupRouter duplicates main() route setup for testing.
 func setupRouter() http.Handler {
 	r := mux.NewRouter()
 	r.HandleFunc("/", rootHandler).Methods("GET")
@@ -27,7 +27,7 @@ func setupRouter() http.Handler {
 	return r
 }
 
-// setupTestDB initializes an in-memory SQLite DB and schema.
+// setupTestDB initializes an in-memory SQLite DB and schema
 func setupTestDB(t *testing.T) {
 	var err error
 	db, err = sql.Open("sqlite3", ":memory:")
@@ -70,6 +70,7 @@ func runTest(t *testing.T, name, method, path string, form url.Values, seed func
 		client := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		}}
+		
 		// perform request
 		var resp *http.Response
 		var err error
