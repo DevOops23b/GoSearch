@@ -1,15 +1,13 @@
-
+// NOTE: Place this file in the same directory as app.go (project root) and name it `integration_test.go`
 package main
 
 import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -17,7 +15,7 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-// setupRouter duplicates main() route setup for testing.
+// setupRouter duplicates your main() route setup for testing.
 func setupRouter() http.Handler {
 	r := mux.NewRouter()
 	r.HandleFunc("/", rootHandler).Methods("GET")
@@ -32,7 +30,6 @@ func setupRouter() http.Handler {
 // setupTestDB initializes an in-memory SQLite DB and schema.
 func setupTestDB(t *testing.T) {
 	var err error
-	// overwrite the package-level db variable
 	db, err = sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open in-memory db: %v", err)
@@ -57,163 +54,136 @@ CREATE TABLE pages (
 	}
 }
 
-func TestWeatherHandler(t *testing.T) {
-	testName := "Weather"
-	t.Run(testName, func(t *testing.T) {
+// runTest is a table-driven helper for integration scenarios.
+func runTest(t *testing.T, name, method, path string, form url.Values, seed func(), check func(*http.Response, string)) {
+	t.Run(name, func(t *testing.T) {
 		setupTestDB(t)
+		if seed != nil {
+			seed()
+		}
+		// init session store
 		store = sessions.NewCookieStore([]byte("test-secret"))
 
-		h := setupRouter()
-		ts := httptest.NewServer(h)
+		ts := httptest.NewServer(setupRouter())
 		defer ts.Close()
 
-		resp, err := http.Get(ts.URL + "/api/weather?city=Copenhagen")
-		if err != nil {
-			t.Fatalf("%s request failed: %v", testName, err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("%s expected 200 OK, got %d", testName, resp.StatusCode)
-		}
-
-		body, _ := ioutil.ReadAll(resp.Body)
-		if !strings.Contains(string(body), "Copenhagen") {
-			t.Errorf("%s expected 'Copenhagen' in body, got %s", testName, string(body))
-		}
-	})
-}
-
-func TestRootHandler(t *testing.T) {
-	testName := "Root"
-	t.Run(testName, func(t *testing.T) {
-		setupTestDB(t)
-		store = sessions.NewCookieStore([]byte("test-secret"))
-
-		// ensure templates folder exists
-		tmplDir := filepath.Join("frontend", "templates")
-		if _, err := os.Stat(tmplDir); os.IsNotExist(err) {
-			t.Skip("templates not found, skipping root handler test")
-		}
-
-		h := setupRouter()
-		ts := httptest.NewServer(h)
-		defer ts.Close()
-
-		resp, err := http.Get(ts.URL + "/")
-		if err != nil {
-			t.Fatalf("%s request failed: %v", testName, err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("%s expected 200 OK, got %d", testName, resp.StatusCode)
-		}
-
-		body, _ := ioutil.ReadAll(resp.Body)
-		if !strings.Contains(string(body), "Home") {
-			t.Errorf("%s expected 'Home' in body, got %s", testName, string(body))
-		}
-	})
-}
-
-func TestSearchHandler(t *testing.T) {
-	testName := "Search"
-	t.Run(testName, func(t *testing.T) {
-		setupTestDB(t)
-		// seed a page in the in-memory DB
-		_, err := db.Exec(`INSERT INTO pages (title,url,language,last_updated,content) VALUES (?,?,?,?,?);`,
-			"TestTitle", "/test-url", "en", "2025-01-01", "TestContent")
-		if err != nil {
-			t.Fatalf("%s failed to seed pages: %v", testName, err)
-		}
-
-		store = sessions.NewCookieStore([]byte("test-secret"))
-		h := setupRouter()
-		ts := httptest.NewServer(h)
-		defer ts.Close()
-
-		resp, err := http.Get(ts.URL + "/api/search?q=TestContent&language=en")
-		if err != nil {
-			t.Fatalf("%s request failed: %v", testName, err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("%s expected 200 OK, got %d", testName, resp.StatusCode)
-		}
-
-		body, _ := ioutil.ReadAll(resp.Body)
-		if !strings.Contains(string(body), "TestTitle") {
-			t.Errorf("%s expected 'TestTitle' in response, got %s", testName, string(body))
-		}
-	})
-}
-
-func TestAPILoginHandler(t *testing.T) {
-	testName := "API Login"
-	t.Run(testName, func(t *testing.T) {
-		setupTestDB(t)
-		// seed a user
-		hashed, _ := hashPassword("pass123")
-		_, err := db.Exec(`INSERT INTO users (username,email,password) VALUES (?,?,?);`,
-			"user1", "u1@example.com", hashed)
-		if err != nil {
-			t.Fatalf("%s failed to seed user: %v", testName, err)
-		}
-
-		store = sessions.NewCookieStore([]byte("test-secret"))
-		h := setupRouter()
-		ts := httptest.NewServer(h)
-		defer ts.Close()
-
-		// use a client that does not follow redirects
 		client := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		}}
-		resp, err := client.PostForm(ts.URL+"/api/login", url.Values{
-			"username": {"user1"},
-			"password": {"pass123"},
-		})
+		// perform request
+		var resp *http.Response
+		var err error
+		url := ts.URL + path
+		switch method {
+		case http.MethodGet:
+			resp, err = client.Get(url)
+		case http.MethodPost:
+			resp, err = client.PostForm(url, form)
+		default:
+			t.Fatalf("unsupported method %s", method)
+		}
 		if err != nil {
-			t.Fatalf("%s POST failed: %v", testName, err)
+			t.Fatalf("%s request error: %v", name, err)
 		}
 		defer resp.Body.Close()
 
-		// expect redirect status on success
-		if resp.StatusCode != http.StatusSeeOther {
-			t.Errorf("%s expected 303 SeeOther, got %d", testName, resp.StatusCode)
-		}
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		body := string(bodyBytes)
+		check(resp, body)
 	})
 }
 
-func TestAPIRegisterHandler(t *testing.T) {
-	testName := "API Register"
-	t.Run(testName, func(t *testing.T) {
-		setupTestDB(t)
-		store = sessions.NewCookieStore([]byte("test-secret"))
-		h := setupRouter()
-		ts := httptest.NewServer(h)
-		defer ts.Close()
+func TestIntegration(t *testing.T) {
+	cases := []struct {
+		name   string
+		method string
+		path   string
+		form   url.Values
+		seed   func()
+		check  func(*http.Response, string)
+	}{
+		{
+			name:   "Weather",
+			method: http.MethodGet,
+			path:   "/api/weather?city=Copenhagen",
+			check: func(resp *http.Response, body string) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("Weather expected 200 OK, got %d", resp.StatusCode)
+				}
+				if !strings.Contains(body, "Copenhagen") {
+					t.Errorf("Weather expected city in body, got %s", body)
+				}
+			},
+		},
+		{
+			name:   "Root",
+			method: http.MethodGet,
+			path:   "/",
+			check: func(resp *http.Response, body string) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("Root expected 200 OK, got %d", resp.StatusCode)
+				}
+				// index.html displays site title
+				if !strings.Contains(body, "¿Who Knows?") {
+					t.Errorf("Root expected site title in body, got %s", body)
+				}
+			},
+		},
+		{
+			name:   "Search",
+			method: http.MethodGet,
+			path:   "/api/search?q=TestContent&language=en",
+			seed: func() {
+				if _, err := db.Exec(
+					`INSERT INTO pages (title,url,language,last_updated,content) VALUES (?,?,?,?,?);`,
+					"TestTitle", "/test-url", "en", "2025-01-01", "TestContent",
+				); err != nil {
+					t.Fatalf("Search seed failed: %v", err)
+				}
+			},
+			check: func(resp *http.Response, body string) {
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("Search expected 200 OK, got %d", resp.StatusCode)
+				}
+				if !strings.Contains(body, "TestTitle") {
+					t.Errorf("Search expected 'TestTitle', got %s", body)
+				}
+			},
+		},
+		{
+			name:   "API Login",
+			method: http.MethodPost,
+			path:   "/api/login",
+			form:   url.Values{"username": {"user1"}, "password": {"pass123"}},
+			seed: func() {
+				hash, _ := hashPassword("pass123")
+				if _, err := db.Exec(
+					`INSERT INTO users (username,email,password) VALUES (?,?,?);`,
+					"user1", "u1@example.com", hash,
+				); err != nil {
+					t.Fatalf("Login seed failed: %v", err)
+				}
+			},
+			check: func(resp *http.Response, body string) {
+				if resp.StatusCode != http.StatusSeeOther {
+					t.Errorf("API Login expected 303 SeeOther, got %d", resp.StatusCode)
+				}
+			},
+		},
+		{
+			name:   "API Register",
+			method: http.MethodPost,
+			path:   "/api/register",
+			form:   url.Values{"username": {"newuser"}, "email": {"new@example.com"}, "password": {"abc123"}, "password2": {"abc123"}},
+			check: func(resp *http.Response, body string) {
+				if resp.StatusCode != http.StatusSeeOther {
+					t.Errorf("API Register expected 303 SeeOther, got %d", resp.StatusCode)
+				}
+			},
+		},
+	}
 
-		// use client without redirects
-		client := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		}}
-		resp, err := client.PostForm(ts.URL+"/api/register", url.Values{
-			"username":  {"newuser"},
-			"email":     {"new@example.com"},
-			"password":  {"abc123"},
-			"password2": {"abc123"},
-		})
-		if err != nil {
-			t.Fatalf("%s POST failed: %v", testName, err)
-		}
-		defer resp.Body.Close()
-
-		// expect redirect status on success
-		if resp.StatusCode != http.StatusSeeOther {
-			t.Errorf("%s expected 303 SeeOther, got %d", testName, resp.StatusCode)
-		}
-	})
+	for _, tc := range cases {
+		runTest(t, tc.name, tc.method, tc.path, tc.form, tc.seed, tc.check)
+	}
 }
