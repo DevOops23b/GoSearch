@@ -544,7 +544,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data := PageData{
 			Title:    "Log in",
-			Template: "login",
+			Template: "login.html",
 			Error:    "Invalid username or password",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -578,10 +578,9 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	var user User
 
 	// Finds the user in the db based on the username
-	//err = db.QueryRow("SELECT id, username, password FROM users WHERE username = $1", username).Scan(&user.ID, &user.Username, &user.Password)
+	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = $1", username).Scan(&user.ID, &user.Username, &user.Password)
 
 	// If the username is not found in th db or password is incorrect
-	err = r.ParseForm()
 	if err != nil {
 		data := PageData{
 			Title:    "Log in",
@@ -596,18 +595,19 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != nil {
+	if !validatePassword(user.Password, password) {
 		data := PageData{
 			Title:    "Log in",
 			Template: "login.html",
-			Error:    "Internal server error",
+			Error:    "Incorrect username or password",
 		}
+
 		w.WriteHeader(http.StatusInternalServerError)
-		err := tmpl.ExecuteTemplate(w, "layout.html", data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Template execution error: %v", err)
 			return
 		}
+		return
 	}
 
 	session, err := store.Get(r, "session-name")
@@ -860,11 +860,11 @@ func hashPassword(password string) (string, error) {
 	return string(hashedBytes), nil
 }
 
-//func validatePassword(hashedPassword, inputPassword string) bool {
+func validatePassword(hashedPassword, inputPassword string) bool {
 
-//	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(inputPassword))
-//	return err == nil
-//}
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(inputPassword))
+	return err == nil
+}
 
 // startCronScheduler sets up and starts a cron job that runs checkTables() every minute
 func startCronScheduler() {
