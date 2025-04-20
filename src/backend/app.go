@@ -547,7 +547,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			Template: "login",
 			Error:    "Invalid username or password",
 		}
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		err = tmpl.ExecuteTemplate(w, "layout.html", data)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -861,11 +861,11 @@ func hashPassword(password string) (string, error) {
 	return string(hashedBytes), nil
 }
 
-func validatePassword(hashedPassword, inputPassword string) bool {
+//func validatePassword(hashedPassword, inputPassword string) bool {
 
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(inputPassword))
-	return err == nil
-}
+//	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(inputPassword))
+//	return err == nil
+//}
 
 // startCronScheduler sets up and starts a cron job that runs checkTables() every minute
 func startCronScheduler() {
