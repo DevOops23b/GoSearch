@@ -1,7 +1,7 @@
 const knexSqlite = require('knex')({
     client: 'better-sqlite3',
     connection: {
-      filename: '/app/src/whoknows.db'
+      filename: process.env.SQLITE_DB_PATH || '/app/src/whoknows.db'
     },
     useNullAsDefault: true
   });
@@ -9,10 +9,10 @@ const knexSqlite = require('knex')({
   const knexPg = require('knex')({
     client: 'pg',
     connection: {
-      host: 'postgres',
-      user: 'youruser',
-      password: 'yourpassword',
-      database: 'whoknows'
+      host: process.env.DB_HOST || 'postgres',
+      user: process.env.DB_USER || 'youruser',
+      password: process.env.DB_PASSWORD || 'yourpassword',
+      database: process.env.DB_NAME || 'whoknows'
     }
   });
   

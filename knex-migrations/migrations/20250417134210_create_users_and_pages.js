@@ -9,9 +9,9 @@ exports.up = function(knex) {
       .then(function() {
         // Insert default admin user
         return knex('users').insert({
-          username: 'admin',
-          email: 'keamonk1@stud.kea.dk',
-          password: '5f4dcc3b5aa765d61d8327deb882cf99'
+          username: process.env.ADMIN_USER || 'admin',
+          email: process.env.ADMIN_EMAIL || 'keamonk1@stud.kea.dk',
+          password: process.env.ADMIN_PASS_HASH || '5f4dcc3b5aa765d61d8327deb882cf99'
         }).onConflict('username').ignore();
       })
       .then(function() {

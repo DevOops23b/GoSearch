@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	//Elasticsearch v8 client
 	"github.com/elastic/go-elasticsearch/v8"
 
@@ -46,22 +48,37 @@ var templatePath string
 var staticPath string
 
 func init() {
-	connStr := os.Getenv("CONN_STR")
-	if connStr != "" {
-		CONN_STR = connStr
-	} else {
+
+	if err := godotenv.Load(".env.local"); err != nil {
+		// If .env.local doesn't exist, try regular .env
+		if err := godotenv.Load(); err != nil {
+			log.Println("No .env files found. Using environment variables.")
+		}
+	}
+
+	CONN_STR = os.Getenv("CONN_STR")
+	if CONN_STR == "" {
+		log.Println("Warning: CONN_STR not set, using default connection string")
 		CONN_STR = "postgres://youruser:yourpassword@localhost:5432/whoknows?sslmode=disable"
 	}
 
-	templatePath = "../frontend/templates/"
-	if envPath := os.Getenv("TEMPLATE_PATH"); envPath != "" {
-		templatePath = envPath
+	templatePath = os.Getenv("TEMPLATE_PATH")
+	if templatePath == "" {
+		templatePath = "../frontend/templates/"
 	}
 
-	staticPath = "../frontend/static/"
-	if envSPath := os.Getenv("STATIC_PATH"); envSPath != "" {
-		staticPath = envSPath
+	staticPath = os.Getenv("STATIC_PATH")
+	if staticPath == "" {
+		staticPath = "../frontend/static/"
 	}
+
+	sessionSecret := os.Getenv("SESSION_SECRET")
+	if sessionSecret == "" {
+		log.Println("Warning: SESSION_SECRET not set, using default (insecure) secret")
+		sessionSecret = "Very-secret-key"
+	}
+
+	store = sessions.NewCookieStore([]byte(sessionSecret))
 }
 
 var db *sql.DB
@@ -212,20 +229,30 @@ func initElasticsearch() {
 		esHost = "localhost"
 	}
 
+	esPassword := os.Getenv("ES_PASSWORD")
+	if esPassword == "" {
+		esPassword = "changeme"
+	}
+
+	esUsername := os.Getenv("ES_USERNAME")
+	if esUsername == "" {
+		esUsername = "elastic"
+	}
+
 	for i := 0; i < maxRetries; i++ {
 		// Try both HTTPS and HTTP connections
 		configs := []elasticsearch.Config{
 			// Try HTTP first
 			{
 				Addresses: []string{fmt.Sprintf("http://%s:9200", esHost)},
-				Username:  "elastic",
-				Password:  "changeme",
+				Username:  esUsername,
+				Password:  esPassword,
 			},
 			// Try HTTPS as fallback
 			{
 				Addresses: []string{fmt.Sprintf("https://%s:9200", esHost)},
-				Username:  "elastic",
-				Password:  "changeme",
+				Username:  esUsername,
+				Password:  esPassword,
 				Transport: &http.Transport{
 					TLSClientConfig: &tls.Config{
 						InsecureSkipVerify: true,

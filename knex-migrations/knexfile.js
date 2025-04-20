@@ -2,11 +2,11 @@ module.exports = {
     development: {
       client: 'pg',
       connection: {
-        host: 'localhost',
-        port: 5432,
-        user: 'youruser',
-        password: 'yourpassword',
-        database: 'whoknows'
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 5432,
+        user: process.env.DB_USER || 'youruser',
+        password: process.env.DB_PASSWORD || 'yourpassword',
+        database: process.env.DB_NAME || 'whoknows'
       },
       migrations: {
         tableName: 'knex_migrations',
@@ -16,11 +16,11 @@ module.exports = {
     docker: {
       client: 'pg',
       connection: {
-        host: 'postgres',
-        port: 5432,
-        user: 'youruser',
-        password: 'yourpassword',
-        database: 'whoknows'
+        host: process.env.DB_HOST || 'postgres',
+        port: process.env.DB_PORT || 5432,
+        user: process.env.DB_USER || 'youruser',
+        password: process.env.DB_PASSWORD || 'yourpassword',
+        database: process.env.DB_NAME || 'whoknows'
       },
       migrations: {
         tableName: 'knex_migrations',
