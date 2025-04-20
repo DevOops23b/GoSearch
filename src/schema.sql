@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 INSERT INTO users (username, email, password) 
-    VALUES ('admin', 'keamonk1@stud.kea.dk', '5f4dcc3b5aa765d61d8327deb882cf99')
+    VALUES ('{{ADMIN_USER}}', '{{ADMIN_EMAIL}}', '{{ADMIN_PASS_HASH}}')
     ON CONFLICT (username) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS pages (
