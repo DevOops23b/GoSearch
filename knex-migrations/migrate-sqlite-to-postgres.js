@@ -1,7 +1,7 @@
 const knexSqlite = require('knex')({
     client: 'better-sqlite3',
     connection: {
-      filename: '../src/whoknows.db'
+      filename: '/app/src/whoknows.db'
     },
     useNullAsDefault: true
   });
@@ -9,7 +9,7 @@ const knexSqlite = require('knex')({
   const knexPg = require('knex')({
     client: 'pg',
     connection: {
-      host: 'localhost',
+      host: 'postgres',
       user: 'youruser',
       password: 'yourpassword',
       database: 'whoknows'

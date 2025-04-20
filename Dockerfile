@@ -20,6 +20,8 @@ FROM alpine:3.21.3
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
+RUN apk add --no-cache nodejs npm
+
 RUN addgroup -S nonroot \
     && adduser -S nonroot -G nonroot
 
@@ -27,6 +29,14 @@ WORKDIR /app
 
 COPY --from=builder /app/app /app/app
 COPY src /app/src
+COPY src/frontend /app/src/frontend
+
+COPY knex-migrations /app/knex-migrations
+WORKDIR /app/knex-migrations
+RUN npm ci --only=production
+
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 WORKDIR /app/src/backend
 
@@ -34,4 +44,4 @@ USER nonroot
 
 EXPOSE 8080
 
-ENTRYPOINT ["/app/app"]
+ENTRYPOINT ["/app/entrypoint.sh"]

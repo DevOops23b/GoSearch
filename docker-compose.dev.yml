@@ -7,7 +7,8 @@ services:
     container_name: go-app
     volumes:
       - ./src/backend:/app/src/backend
-      - ./src/whoknows.db:/app/src/gosearch.dev.db
+      - ./src/frontend:/app/src/frontend
+      - ./src/whoknows.db:/app/src/whoknows.db
     ports:
       - "8081:8080"
     environment:
@@ -15,13 +16,15 @@ services:
       - APP_ENV=development
       - LOG_LEVEL=debug
       - ES_HOST=elasticsearch
+      - TEMPLATE_PATH=/app/src/frontend/templates/
+      - STATIC_PATH=/app/src/frontend/static/
     depends_on:
       postgres:
         condition: service_started
       elasticsearch:
         condition: service_healthy
     restart: always
-    command: sh -c "npx knex migrate:latest && go run main.go"
+    command: /app/entrypoint.sh
 
   postgres:
     image: postgres:13

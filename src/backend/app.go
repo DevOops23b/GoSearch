@@ -41,12 +41,26 @@ import (
 
 var CONN_STR string
 
+var templatePath string
+
+var staticPath string
+
 func init() {
 	connStr := os.Getenv("CONN_STR")
 	if connStr != "" {
 		CONN_STR = connStr
 	} else {
 		CONN_STR = "postgres://youruser:yourpassword@localhost:5432/whoknows?sslmode=disable"
+	}
+
+	templatePath = "../frontend/templates/"
+	if envPath := os.Getenv("TEMPLATE_PATH"); envPath != "" {
+		templatePath = envPath
+	}
+
+	staticPath = "../frontend/static/"
+	if envSPath := os.Getenv("STATIC_PATH"); envSPath != "" {
+		staticPath = envSPath
 	}
 }
 
@@ -195,7 +209,7 @@ func initElasticsearch() {
 
 	esHost := os.Getenv("ES_HOST")
 	if esHost == "" {
-		esHost = "elasticsearch"
+		esHost = "localhost"
 	}
 
 	for i := 0; i < maxRetries; i++ {
@@ -344,7 +358,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 		"UserLoggedIn": ok && userID != nil,
 	}
 
-	tmpl, err := template.ParseFiles("../frontend/templates/index.html")
+	tmpl, err := template.ParseFiles(templatePath + "index.html")
 	if err != nil {
 		http.Error(w, "Error loading index-side", http.StatusInternalServerError)
 		return
@@ -368,7 +382,7 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 		"UserLoggedIn": ok && userID != nil,
 	}
 
-	tmpl, err := template.ParseFiles("../frontend/templates/about.html")
+	tmpl, err := template.ParseFiles(templatePath + "about.html")
 	if err != nil {
 		http.Error(w, "Error loading about-side", http.StatusInternalServerError)
 		return
@@ -410,7 +424,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	tmpl, err := template.ParseFiles("../frontend/templates/search.html")
+	tmpl, err := template.ParseFiles(templatePath + "search.html")
 	if err != nil {
 		http.Error(w, "Error loading search template", http.StatusInternalServerError)
 		return
@@ -429,44 +443,28 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 /// Login/Logout Handlers ???
 //////////////////////////////////////////////////////////////////////////////////
 
-var tmpl = template.Must(template.ParseFiles("../frontend/templates/layout.html", "../frontend/templates/login.html"))
+func getTemplates() (*template.Template, error) {
+	return template.ParseFiles(templatePath+"layout.html", templatePath+"login.html")
+}
 
 func login(w http.ResponseWriter, r *http.Request) {
+
+	tmpl, err := getTemplates()
+
+	if err != nil {
+		http.Error(w, "Error loading templates: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	data := PageData{
 		Title:    "Log in",
 		Template: "login",
 	}
 
-	err := tmpl.ExecuteTemplate(w, "layout.html", data)
-
+	err = tmpl.ExecuteTemplate(w, "layout.html", data)
 	if err != nil {
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
-
 	}
-
-	/*
-		data := map[string]interface{} {
-			"Error": "", // default error message
-		}
-
-		session, err := store.Get(r, "session-name") //Due to err, the error will not be ignored
-		if err != nil {
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		if _, ok := session.Values["user_id"]; ok {
-			http.Redirect(w, r, "/", http.StatusFound)
-			return
-		}
-
-
-
-
-		tmpl.Execute(w, nil)
-		tmpl.ExecuteTemplate(w, "layout.html", data)
-	*/
 
 }
 
@@ -497,9 +495,25 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 /// Login Handlers
 //////////////////////////////////////////////////////////////////////////////////
 
+func loadTemplates(files ...string) (*template.Template, error) {
+	var paths []string
+	for _, file := range files {
+		paths = append(paths, templatePath+file)
+	}
+
+	return template.ParseFiles(paths...)
+}
+
 func apiLogin(w http.ResponseWriter, r *http.Request) {
 
-	err := r.ParseForm()
+	tmpl, err := loadTemplates("layout.html", "login.html")
+	if err != nil {
+		log.Printf("Template loading error: %v", err)
+		http.Error(w, "Error loading templates", http.StatusInternalServerError)
+		return
+	}
+
+	err = r.ParseForm()
 	if err != nil {
 		data := PageData{
 			Title:    "Log in",
@@ -507,7 +521,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			Error:    "Invalid username or password",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		err := tmpl.ExecuteTemplate(w, "layout.html", data)
+		err = tmpl.ExecuteTemplate(w, "layout.html", data)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -541,16 +555,16 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = $1", username).Scan(&user.ID, &user.Username, &user.Password)
 
 	// If the username is not found in th db or password is incorrect
-	if err == sql.ErrNoRows || !validatePassword(user.Password, password) {
+	err = r.ParseForm()
+	if err != nil {
 		data := PageData{
 			Title:    "Log in",
 			Template: "login.html",
 			Error:    "Incorrect username or password",
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		err := tmpl.ExecuteTemplate(w, "layout.html", data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Template execution error: %v", err)
 			return
 		}
 		return
@@ -616,7 +630,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/search", http.StatusFound)
 		return
 	}
-	tmpl, err := template.ParseFiles("../frontend/templates/register.html")
+	tmpl, err := template.ParseFiles(templatePath + "register.html")
 	if err != nil {
 		http.Error(w, "Error loading register page", http.StatusInternalServerError)
 		return
@@ -796,7 +810,7 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 		Message: "Solen skinner i " + city + "!",
 	}
 
-	tmpl, err := template.ParseFiles("../frontend/templates/weather.html")
+	tmpl, err := template.ParseFiles(templatePath + "weather.html")
 	if err != nil {
 		http.Error(w, "Error loading weather page", http.StatusInternalServerError)
 		return
@@ -885,7 +899,7 @@ func main() {
 	r.HandleFunc("/api/weather", weatherHandler).Methods("GET") //weather-side
 
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("../frontend/static/"))))
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(staticPath))))
 
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.
