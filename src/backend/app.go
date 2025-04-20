@@ -547,10 +547,9 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			Template: "login",
 			Error:    "Invalid username or password",
 		}
-		w.WriteHeader(http.StatusBadRequest)
-		err = tmpl.ExecuteTemplate(w, "layout.html", data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Template execution error: %v", err)
 			return
 		}
 		return
@@ -579,7 +578,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	var user User
 
 	// Finds the user in the db based on the username
-	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = $1", username).Scan(&user.ID, &user.Username, &user.Password)
+	//err = db.QueryRow("SELECT id, username, password FROM users WHERE username = $1", username).Scan(&user.ID, &user.Username, &user.Password)
 
 	// If the username is not found in th db or password is incorrect
 	err = r.ParseForm()
