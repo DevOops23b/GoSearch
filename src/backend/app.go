@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"strconv"
 
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
@@ -25,7 +26,83 @@ import (
 
 	"github.com/robfig/cron/v3"
 	// Import the cron library to schedule periodic tasks
+
+	// For monitoring
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/shirou/gopsutil/cpu"
 )
+
+///////////////////////////////////////////////////////////////////////////////////
+/// Monitoring with Prometheus
+///////////////////////////////////////////////////////////////////////////////////
+
+// Define metrics
+var (
+	httpRequestsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"method", "endpoint", "status"},
+	)
+
+	httpRequestDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: "http_request_duration_seconds",
+			Help: "Duration of HTTP requests in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "endpoint"},
+	)
+
+	
+)
+
+
+
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rec *statusRecorder) WriteHeader(statusCode int) {
+	rec.statusCode = statusCode
+	rec.ResponseWriter.WriteHeader(statusCode)
+}
+
+func metricsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
+		// Custom response writer to track status
+		recorder := &statusRecorder{
+			ResponseWriter: w,
+			statusCode: 200,
+		}
+		start := time.Now()
+
+		next.ServeHTTP(recorder, r)
+
+
+		// Record metrics after the request is processed
+		duration := time.Since(start).Seconds()
+		httpRequestDuration.WithLabelValues(r.Method, r.URL.Path).Observe(duration)
+
+		// Use actual status code
+		httpRequestsTotal.WithLabelValues(
+			r.Method,
+			r.URL.Path,
+			strconv.Itoa(recorder.statusCode),
+		).Inc()
+
+	})
+}
+
+
+
+
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////
 /// Configurations
