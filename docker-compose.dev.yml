@@ -7,11 +7,60 @@ services:
     container_name: go-app
     volumes:
       - ./src/backend:/app/src/backend
-      - ./src/whoknows.db:/app/src/gosearch.dev.db
+      - ./src/frontend:/app/src/frontend
+      - ./src/whoknows.db:/app/src/whoknows.db
     ports:
       - "8081:8080"
     environment:
-      - DATABASE_PATH=/app/src/gosearch.dev.db
-      - APP_ENV=development
-      - LOG_LEVEL=debug
+      - CONN_STR=${CONN_STR}
+      - APP_ENV=${APP_ENV}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - ES_HOST=${ES_HOST}
+      - TEMPLATE_PATH=${TEMPLATE_PATH}
+      - STATIC_PATH=${STATIC_PATH}
+      - SESSION_SECRET=${SESSION_SECRET}
+    depends_on:
+      postgres:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy
     restart: always
+    command: /app/entrypoint.sh
+
+  postgres:
+    image: postgres:13
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.0
+    container_name: elasticsearch
+    environment:
+      discovery.type: single-node
+      ELASTIC_PASSWORD: ${ES_PASSWORD}
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      xpack.security.enabled: "false"
+      xpack.security.http.ssl.enabled: "false"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:9200 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  esdata:
