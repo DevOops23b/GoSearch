@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"fmt"
 	"log"
@@ -72,7 +73,11 @@ var (
 			Help: "Days until the tls certificate expires",
 		}, []string{"domain"})
 
-	
+	certValidity = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "tls_certificate_validity",
+			Help: "Certificate validity (1 = valid, 0 = invalid)",
+		}, []string{"domain"})
 )
 
 
@@ -789,7 +794,7 @@ func startCronScheduler() {
 
 func main() {
 
-	// Go goroutine for monitoring CPU usage every 30 seconds
+	// Goroutine for monitoring CPU usage every 30 seconds
 	go func() {
 		for {
 			cpuPercent, _ := cpu.Percent(time.Second, false)
@@ -799,23 +804,61 @@ func main() {
 			time.Sleep(30 * time.Second)
 		}
 	}()
-
+	
+	// Goroutine for monitoring certificate expiry days and validation
 	go func() {
-		for {
-			domain := "gosearch.dk"
-			conn, err := tls.Dial("tcp", domain+":443", &tls.Config{
-				InsecureSkipVerify: true,
-			})
-			if err != nil {
-				log.Printf("Error connecting to %s: %v", domain, err)
-			} else {
-				cert := conn.ConnectionState().PeerCertificates[0]
-				daysUntilExpiry := time.Until(cert.NotAfter).Hours()/24
-				certExpiryDays.WithLabelValues(domain).Set(daysUntilExpiry)
-				conn.Close()
-			}
-			time.Sleep(24 * time.Hour)
+
+		domain := "gosearch.dk"
+
+		rootCAs, _ := x509.SystemCertPool()
+		if rootCAs != nil {
+			rootCAs = x509.NewCertPool()
 		}
+
+		// TLS configuration
+		config := &tls.Config{
+			RootCAs: rootCAs,
+			ServerName: domain,
+		}
+
+		conn, err := tls.Dial("tcp", domain+":443", config)
+
+		certValid := 1.0
+
+		var daysUntilExpiry float64
+
+		if err != nil {
+			log.Printf("Certificate validation failed for %s: %v", domain, err)
+			certValid = 0.0
+		} else {
+			cert := conn.ConnectionState().PeerCertificates[0]
+
+			daysUntilExpiry = time.Until(cert.NotAfter).Hours()/24
+
+
+			// Verify certificate validity
+
+			opts := x509.VerifyOptions{
+				DNSName: domain,
+				Roots: rootCAs,
+			}
+
+			_, err = cert.Verify(opts)
+
+			if err != nil {
+				log.Printf("Certificate chain validation failed: %v", err)
+				certValid = 0.0
+			}
+
+			conn.Close()
+
+		}
+
+		// Update metrics
+		certExpiryDays.WithLabelValues(domain).Set(daysUntilExpiry)
+		certValidity.WithLabelValues(domain).Set(certValid)
+
+
 	}()
 
 
