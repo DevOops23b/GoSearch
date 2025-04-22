@@ -4,14 +4,16 @@ set -e
 echo "Running schema migrations..."
 cd /app/knex-migrations
 
+# Behøves ikke at blive lagt i secrets
 export DB_HOST=${DB_HOST:-postgres}
 export DB_PORT=${DB_PORT:-5432}
-export DB_USER=${DB_USER:-youruser}
-export DB_PASSWORD=${DB_PASSWORD:-yourpassword}
-export DB_NAME=${DB_NAME:-whoknows}
-export ADMIN_USER=${ADMIN_USER:-admin}
-export ADMIN_EMAIL=${ADMIN_EMAIL:-keamonk1@stud.kea.dk}
-export ADMIN_PASS_HASH=${ADMIN_PASS_HASH:-5f4dcc3b5aa765d61d8327deb882cf99}
+
+export DB_USER="$(cat /run/secrets/db_user)"
+export DB_PASSWORD="$(cat /run/secrets/db_password)"
+export DB_NAME="$(cat /run/secrets/db_name)"
+export ADMIN_USER="$(cat /run/secrets/admin_user)"
+export ADMIN_EMAIL="$(cat /run/secrets/admin_email)"
+export ADMIN_PASS_HASH="$(cat /run/secrets/admin_pass_hash)"
 
 npx knex migrate:latest --env docker
 

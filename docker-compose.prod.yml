@@ -1,0 +1,98 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/devoops23b/gosearch:latest
+    container_name: go-app
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./src/backend:/app/src/backend
+      - ./src/frontend:/app/src/frontend
+      - ./src/whoknows.db:/app/src/whoknows.db
+    secrets:
+      - db_user
+      - db_password
+      - db_name
+      - admin_user
+      - admin_email
+      - admin_pass_hash
+      - session_secret
+    environment:
+      - APP_ENV=production
+      - LOG_LEVEL=info
+      - ES_HOST=elasticsearch
+      - TEMPLATE_PATH=/app/src/frontend/templates/
+      - STATIC_PATH=/app/src/frontend/static/
+    depends_on:
+      postgres:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy
+    restart: always
+    command: /app/entrypoint.sh
+
+  postgres:
+    image: postgres:13
+    container_name: postgres-db
+    restart: always
+    secrets:
+      - db_user
+      - db_password
+      - db_name
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/db_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB_FILE: /run/secrets/db_name
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.0
+    container_name: elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      ELASTIC_PASSWORD_FILE: /run/secrets/es_password
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    secrets:
+     - es_password
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:9200 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+secrets:
+  db_user:
+    file: ./secrets/db_user.txt
+  db_password:
+    file: ./secrets/db_password.txt
+  db_name:
+    file: ./secrets/db_name.txt
+  admin_user:
+    file: ./secrets/admin_user.txt
+  admin_email:
+    file: ./secrets/admin_email.txt
+  admin_pass_hash:
+    file: ./secrets/admin_pass_hash.txt
+  session_secret:
+    file: ./secrets/session_secret.txt
+  es_password:
+    file: ./secrets/es_password.txt
+
+volumes:
+  postgres_data:
+  esdata:

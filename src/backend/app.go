@@ -59,7 +59,7 @@ func init() {
 	CONN_STR = os.Getenv("CONN_STR")
 	if CONN_STR == "" {
 		log.Println("Warning: CONN_STR not set, using default connection string")
-		CONN_STR = "postgres://youruser:yourpassword@localhost:5432/whoknows?sslmode=disable"
+		//CONN_STR = "postgres://youruser:yourpassword@localhost:5432/whoknows?sslmode=disable"
 	}
 
 	templatePath = os.Getenv("TEMPLATE_PATH")
@@ -75,7 +75,7 @@ func init() {
 	sessionSecret := os.Getenv("SESSION_SECRET")
 	if sessionSecret == "" {
 		log.Println("Warning: SESSION_SECRET not set, using default (insecure) secret")
-		sessionSecret = "Very-secret-key"
+		//sessionSecret = "Very-secret-key"
 	}
 
 	store = sessions.NewCookieStore([]byte(sessionSecret))
