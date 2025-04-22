@@ -1,13 +1,14 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 
 	//"encoding/json" // Gør at vi kan læse json-format
 	"html/template" // til html-sider(skabeloner)
@@ -29,8 +30,8 @@ import (
 
 	// For monitoring
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/shirou/gopsutil/cpu"
 )
 
@@ -56,6 +57,20 @@ var (
 		},
 		[]string{"method", "endpoint"},
 	)
+
+	cpuLoadPercentage = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "cpu_load_percentage",
+			Help: "Current cpu load in percent",
+
+		},
+	)
+
+	certExpiryDays = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "tls_certificate_expiry_days",
+			Help: "Days until the tls certificate expires",
+		}, []string{"domain"})
 
 	
 )
@@ -773,6 +788,37 @@ func startCronScheduler() {
 //////////////////////////////////////////////////////////////////////////////////
 
 func main() {
+
+	// Go goroutine for monitoring CPU usage every 30 seconds
+	go func() {
+		for {
+			cpuPercent, _ := cpu.Percent(time.Second, false)
+			if len(cpuPercent) > 0 {
+				cpuLoadPercentage.Set(cpuPercent[0])
+			}
+			time.Sleep(30 * time.Second)
+		}
+	}()
+
+	go func() {
+		for {
+			domain := "gosearch.dk"
+			conn, err := tls.Dial("tcp", domain+":443", &tls.Config{
+				InsecureSkipVerify: true,
+			})
+			if err != nil {
+				log.Printf("Error connecting to %s: %v", domain, err)
+			} else {
+				cert := conn.ConnectionState().PeerCertificates[0]
+				daysUntilExpiry := time.Until(cert.NotAfter).Hours()/24
+				certExpiryDays.WithLabelValues(domain).Set(daysUntilExpiry)
+				conn.Close()
+			}
+			time.Sleep(24 * time.Hour)
+		}
+	}()
+
+
 	// initialiserer databasen og forbinder til den.
 	initDB()
 	defer closeDB()
@@ -791,6 +837,14 @@ func main() {
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
 	r := mux.NewRouter()
+
+	// Applying middleware function to all routes
+	r.Use(func(next http.Handler) http.Handler {
+		return metricsMiddleware(next)
+	})
+
+	// Adding metrics endpoint
+	r.Handle("/metrics", promhttp.Handler())
 
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET")             // Forside
