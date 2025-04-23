@@ -10,5 +10,9 @@
   "devDependencies": {
     "@playwright/test": "^1.51.1",
     "@types/node": "^22.13.14"
+  },
+  "dependencies": {
+    "knex": "^3.1.0",
+    "pg": "^8.15.1"
   }
 }
