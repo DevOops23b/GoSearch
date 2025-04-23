@@ -668,7 +668,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 // Håndterer registreringsprocessen
 func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if userIsLoggedIn(r) {
-		http.Redirect(w, r, "/search", http.StatusFound)
+		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
 	err := r.ParseForm()
