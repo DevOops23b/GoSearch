@@ -9,6 +9,7 @@
 # Test binary, built with `go test -c`
 *.test
 
+# All enverironment variables
 secrets/
 .env
 .env.*
