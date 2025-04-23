@@ -79,6 +79,7 @@ func init() {
 	}
 
 	store = sessions.NewCookieStore([]byte(sessionSecret))
+
 }
 
 var db *sql.DB
@@ -166,10 +167,6 @@ func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
 
-/*nolint:unused
-func executeDB(query string, args ...interface{}) (sql.Result, error) {
-    return db.Exec(query, args...)
-}*/
 
 func closeDB() {
 	if db != nil {
@@ -653,7 +650,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 // viser registreringssiden.
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if userIsLoggedIn(r) {
-		http.Redirect(w, r, "/search", http.StatusFound)
+		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
 	tmpl, err := template.ParseFiles(templatePath + "register.html")
@@ -915,12 +912,12 @@ func main() {
 	r.HandleFunc("/about", aboutHandler).Methods("GET")       //about-side
 	r.HandleFunc("/login", login).Methods("GET")              //Login-side
 	r.HandleFunc("/register", registerHandler).Methods("GET") //Register-side
+	r.HandleFunc("/search", searchHandler).Methods("GET")
 
 	// Definerer api-erne
 	r.HandleFunc("/api/login", apiLogin).Methods("POST")
-	r.HandleFunc("/api/search", searchHandler).Methods("GET")
 	r.HandleFunc("/api/logout", logoutHandler).Methods("GET")
-	r.HandleFunc("/api/search", searchHandler).Methods("GET") // API-ruten for søgninger.
+	r.HandleFunc("/api/search", searchHandler).Methods("POST") // API-ruten for søgninger.
 	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
 	r.HandleFunc("/api/weather", weatherHandler).Methods("GET") //weather-side
 
