@@ -80,12 +80,6 @@ func init() {
 
 	store = sessions.NewCookieStore([]byte(sessionSecret))
 
-	// store.Options = &sessions.Options{
-    //     Path:     "/",
-    //     MaxAge:   86400 * 7, 
-    //     HttpOnly: true,
-    //     SameSite: http.SameSiteLaxMode,
-    // }
 }
 
 var db *sql.DB
@@ -173,10 +167,6 @@ func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
 
-/*nolint:unused
-func executeDB(query string, args ...interface{}) (sql.Result, error) {
-    return db.Exec(query, args...)
-}*/
 
 func closeDB() {
 	if db != nil {
