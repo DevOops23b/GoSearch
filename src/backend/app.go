@@ -917,6 +917,7 @@ func main() {
 	// Definerer api-erne
 	r.HandleFunc("/api/login", apiLogin).Methods("POST")
 	r.HandleFunc("/api/logout", logoutHandler).Methods("GET")
+	r.HandleFunc("/api/search", searchHandler).Methods("GET")
 	r.HandleFunc("/api/search", searchHandler).Methods("POST") // API-ruten for søgninger.
 	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
 	r.HandleFunc("/api/weather", weatherHandler).Methods("GET") //weather-side
