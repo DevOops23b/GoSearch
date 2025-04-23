@@ -63,7 +63,6 @@ var (
 		prometheus.GaugeOpts{
 			Name: "cpu_load_percentage",
 			Help: "Current cpu load in percent",
-
 		},
 	)
 
@@ -71,13 +70,25 @@ var (
 		prometheus.GaugeOpts{
 			Name: "tls_certificate_expiry_days",
 			Help: "Days until the tls certificate expires",
-		}, []string{"domain"})
+		}, 
+		[]string{"domain"},
+	)
 
 	certValidity = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "tls_certificate_validity",
 			Help: "Certificate validity (1 = valid, 0 = invalid)",
-		}, []string{"domain"})
+		}, 
+		[]string{"domain"},
+	)
+
+	newUserCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "new_users_total_count",
+			Help: "New users",
+		},
+		[]string{"hour_of_day", "day_of_week"},
+	)	
 )
 
 
@@ -116,6 +127,15 @@ func metricsMiddleware(next http.Handler) http.Handler {
 		).Inc()
 
 	})
+}
+
+// Updates the user counter with current hour and weekday
+func incrementNewUserCounter() {
+	now := time.Now()
+	hourOfDay := strconv.Itoa(now.Hour())
+	dayOfWeek := now.Weekday().String()
+
+	newUserCounter.WithLabelValues(hourOfDay, dayOfWeek).Inc()
 }
 
 
@@ -646,6 +666,9 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to retrieve user ID", http.StatusInternalServerError)
 		return
 	}
+
+	// Function to update number of users along with when they were created
+	incrementNewUserCounter()
 
 	// Opret session og log brugeren ind
 	session, err := store.Get(r, "session-name")
