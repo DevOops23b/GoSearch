@@ -9,8 +9,10 @@
 # Test binary, built with `go test -c`
 *.test
 
-# environment
-.env*
+# All enverironment variables
+secrets/
+.env
+.env.*
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
