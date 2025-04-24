@@ -18,6 +18,9 @@
 # Go workspace file
 go.work
 
+# environment
+*.env*
+
 # End
 
 # Playwright
