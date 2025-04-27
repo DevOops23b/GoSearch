@@ -47,7 +47,7 @@ var templatePath string
 
 var staticPath string
 
-var searchLogger *log.Logger
+var searchLogger = log.New(os.Stdout, "SEARCH: ", log.LstdFlags)
 
 func init() {
 
@@ -289,6 +289,28 @@ func initElasticsearch() {
 }
 
 func searchPagesInEs(query string) ([]Page, error) {
+	///// TESTS FALLBACK ///////////
+	if esClient == nil {
+		// Simple DB search for test mode
+		var pages []Page
+		sqlStmt := "SELECT title, url, content FROM pages WHERE content LIKE ?"
+		likeQ := "%" + query + "%"
+		rows, err := db.Query(sqlStmt, likeQ)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var p Page
+			if err := rows.Scan(&p.Title, &p.URL, &p.Content); err != nil {
+				continue
+			}
+			pages = append(pages, p)
+		}
+		return pages, nil
+	}
+	/////// PRODUCTION: real Elasticsearch search ───────────────────────────
 	var pages []Page
 
 	searchBody := strings.NewReader(fmt.Sprintf(`{
