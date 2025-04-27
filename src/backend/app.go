@@ -47,6 +47,8 @@ var templatePath string
 
 var staticPath string
 
+var searchLogger *log.Logger
+
 func init() {
 
 	if err := godotenv.Load(".env.local"); err != nil {
@@ -166,7 +168,6 @@ func initDB() {
 func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
-
 
 func closeDB() {
 	if db != nil {
@@ -429,6 +430,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No search query provided", http.StatusBadRequest)
 		return
 	}
+	//TO LOG THE QUERY//
+	searchLogger.Printf("query=%q from=%s", queryParam, r.RemoteAddr)
 
 	//Nuild search against Elasticsearch
 	pages, err := searchPagesInEs(queryParam)
@@ -897,6 +900,14 @@ func main() {
 	if err := syncPagesToElasticsearch(); err != nil {
 		log.Fatalf("Failed to sync pages: %v", err)
 	}
+
+	///NEW: initialize searchLogger////
+	f, err := os.OpenFile("search.log",
+		os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("could not open search log file: %v", err)
+	}
+	searchLogger = log.New(f, "SEARCH: ", log.LstdFlags)
 
 	checkTables()
 
