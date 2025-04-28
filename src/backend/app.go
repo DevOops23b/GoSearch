@@ -905,12 +905,17 @@ func main() {
 	r := mux.NewRouter()
 
 	// Applying middleware function to all routes
+	
+	r.Use(metricsMiddleware)
+
+	/*
 	r.Use(func(next http.Handler) http.Handler {
 		return metricsMiddleware(next)
 	})
+	*/
 
 	// Adding metrics endpoint
-	r.Handle("/metrics", promhttp.Handler())
+	r.Path("/metrics").Handler(promhttp.Handler())
 
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET")             // Forside
