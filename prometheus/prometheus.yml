@@ -9,5 +9,5 @@ scrape_configs:
       insecure_skip_verify: true
     static_configs:
       - targets: 
-          - 'gosearch.dk:8081'
+          - 'gosearch.dk'
       
