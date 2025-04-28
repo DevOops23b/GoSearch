@@ -26,6 +26,9 @@ const knexSqlite = require('knex')({
     for (const page of pages) {
       await knexPg('pages').insert(page).onConflict('title').ignore();
     }
+
+    //This to update users id - to max id. Now the next user wont get a already used id
+    await knexPg.raw(`SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));`);
   
     console.log('Migration complete');
     process.exit(0);
