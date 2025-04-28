@@ -28,17 +28,12 @@ func setupRouter() http.Handler {
 }
 
 // setupTestDB initializes an in-memory SQLite DB and schema
-func setupTestDB(t *testing.T) *sql.DB {
-
-	db, err := sql.Open("sqlite3", ":memory:")
+func setupTestDB(t *testing.T) {
+	var err error
+	db, err = sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open in-memory db: %v", err)
 	}
-
-	t.Cleanup(func() {
-		db.Close()
-	})
-
 	schema := `
 CREATE TABLE users (
     id INTEGER PRIMARY KEY,
@@ -57,24 +52,15 @@ CREATE TABLE pages (
 	if _, err := db.Exec(schema); err != nil {
 		t.Fatalf("failed to create schema: %v", err)
 	}
-	return db
 }
 
 // runTest is a table-driven helper for integration scenarios.
 func runTest(t *testing.T, name, method, path string, form url.Values, seed func(), check func(*http.Response, string)) {
 	t.Run(name, func(t *testing.T) {
-		testDB := setupTestDB(t)
-
-		originalDB := db
-		db = testDB
-		t.Cleanup(func() {
-			db = originalDB
-		})
-
+		setupTestDB(t)
 		if seed != nil {
 			seed()
 		}
-
 		// init session store
 		store = sessions.NewCookieStore([]byte("test-secret"))
 
