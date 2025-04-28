@@ -5,4 +5,4 @@ global:
 scrape_configs:
   - job_name: 'gosearch'
     static_configs:
-      - targets: ['gosearch.dk:8080']
+      - targets: ['gosearch.dk:8081']
