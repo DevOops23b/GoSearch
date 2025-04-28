@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -81,6 +82,18 @@ func init() {
 	}
 
 	store = sessions.NewCookieStore([]byte(sessionSecret))
+
+	var logPath string
+
+	// In the init() function
+	logPath = os.Getenv("LOG_PATH")
+	if logPath == "" {
+		// Default to current directory for local development
+		logPath = "search.log"
+	} else {
+		// Use the provided path for Docker or other environments
+		logPath = filepath.Join(logPath, "search.log")
+	}
 
 }
 
@@ -912,6 +925,7 @@ func startCronScheduler() {
 //////////////////////////////////////////////////////////////////////////////////
 
 func main() {
+	var logPath string
 	// initialiserer databasen og forbinder til den.
 	initDB()
 	defer closeDB()
@@ -924,10 +938,13 @@ func main() {
 	}
 
 	///NEW: initialize searchLogger////
-	f, err := os.OpenFile("search.log",
-		os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Fatalf("could not open search log file: %v", err)
+		log.Printf("Warning: could not open search log file: %v, using stdout instead", err)
+		searchLogger = log.New(os.Stdout, "SEARCH: ", log.LstdFlags)
+	} else {
+		searchLogger = log.New(f, "SEARCH: ", log.LstdFlags)
+		defer f.Close() // Remember to close the file when done
 	}
 	searchLogger = log.New(f, "SEARCH: ", log.LstdFlags)
 
