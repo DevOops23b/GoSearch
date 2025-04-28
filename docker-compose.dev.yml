@@ -19,6 +19,7 @@ services:
       - TEMPLATE_PATH=${TEMPLATE_PATH}
       - STATIC_PATH=${STATIC_PATH}
       - SESSION_SECRET=${SESSION_SECRET}
+      - SEARCH_LOG_PATH=/app/src/backend/search.log
     depends_on:
       postgres:
         condition: service_started

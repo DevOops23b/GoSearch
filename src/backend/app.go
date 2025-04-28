@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -82,18 +81,6 @@ func init() {
 	}
 
 	store = sessions.NewCookieStore([]byte(sessionSecret))
-
-	var logPath string
-
-	// In the init() function
-	logPath = os.Getenv("LOG_PATH")
-	if logPath == "" {
-		// Default to current directory for local development
-		logPath = "search.log"
-	} else {
-		// Use the provided path for Docker or other environments
-		logPath = filepath.Join(logPath, "search.log")
-	}
 
 }
 
@@ -460,12 +447,15 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 // Viser search api-server.
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
+	log.Println("Search handler called")
+
 	queryParam := strings.TrimSpace(r.URL.Query().Get("q"))
 	if queryParam == "" {
 		http.Error(w, "No search query provided", http.StatusBadRequest)
 		return
 	}
 	//TO LOG THE QUERY//
+	log.Printf("Search query: %q from %s", queryParam, r.RemoteAddr)
 	searchLogger.Printf("query=%q from=%s", queryParam, r.RemoteAddr)
 
 	//Nuild search against Elasticsearch
@@ -925,7 +915,6 @@ func startCronScheduler() {
 //////////////////////////////////////////////////////////////////////////////////
 
 func main() {
-	var logPath string
 	// initialiserer databasen og forbinder til den.
 	initDB()
 	defer closeDB()
@@ -938,15 +927,20 @@ func main() {
 	}
 
 	///NEW: initialize searchLogger////
+	logPath := os.Getenv("SEARCH_LOG_PATH")
+	if logPath == "" {
+		logPath = "/app/src/backend/search.log" // Default for Docker
+	}
+
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Printf("Warning: could not open search log file: %v, using stdout instead", err)
 		searchLogger = log.New(os.Stdout, "SEARCH: ", log.LstdFlags)
 	} else {
+		log.Printf("Search logs will be written to %s", logPath)
 		searchLogger = log.New(f, "SEARCH: ", log.LstdFlags)
-		defer f.Close() // Remember to close the file when done
+		defer f.Close()
 	}
-	searchLogger = log.New(f, "SEARCH: ", log.LstdFlags)
 
 	checkTables()
 
