@@ -1,6 +1,6 @@
-service:
+services:
   prometheus:
-    image: prom/prometheus:sha256-b41a46cf049d3865d87ba72f6c531b688f1651a579c86f31584f41ee6d45a437
+    image: prom/prometheus@sha256:b41a46cf049d3865d87ba72f6c531b688f1651a579c86f31584f41ee6d45a437
     ports:
       - "9090:9090"
     volumes:
@@ -14,7 +14,7 @@ service:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:sha256-95173c11b36f53a423ce47f00baee3f913a3e403f202a83c8bc3c7115a2cfdd0
+    image: grafana/grafana@sha256:95173c11b36f53a423ce47f00baee3f913a3e403f202a83c8bc3c7115a2cfdd0
     ports:
       - "3000:3000"
     volumes:
@@ -26,6 +26,6 @@ service:
       - prometheus
     restart: unless-stopped
 
-  volumes:
-    - prometheus_data:
-    - grafana_data:  
+volumes:
+  prometheus_data:
+  grafana_data:  
