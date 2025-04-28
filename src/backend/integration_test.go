@@ -1,15 +1,15 @@
-
 package main
 
 import (
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -28,12 +28,17 @@ func setupRouter() http.Handler {
 }
 
 // setupTestDB initializes an in-memory SQLite DB and schema
-func setupTestDB(t *testing.T) {
-	var err error
-	db, err = sql.Open("sqlite3", ":memory:")
+func setupTestDB(t *testing.T) *sql.DB {
+
+	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open in-memory db: %v", err)
 	}
+
+	t.Cleanup(func() {
+		db.Close()
+	})
+
 	schema := `
 CREATE TABLE users (
     id INTEGER PRIMARY KEY,
@@ -52,15 +57,24 @@ CREATE TABLE pages (
 	if _, err := db.Exec(schema); err != nil {
 		t.Fatalf("failed to create schema: %v", err)
 	}
+	return db
 }
 
 // runTest is a table-driven helper for integration scenarios.
 func runTest(t *testing.T, name, method, path string, form url.Values, seed func(), check func(*http.Response, string)) {
 	t.Run(name, func(t *testing.T) {
-		setupTestDB(t)
+		testDB := setupTestDB(t)
+
+		originalDB := db
+		db = testDB
+		t.Cleanup(func() {
+			db = originalDB
+		})
+
 		if seed != nil {
 			seed()
 		}
+
 		// init session store
 		store = sessions.NewCookieStore([]byte("test-secret"))
 
@@ -70,7 +84,7 @@ func runTest(t *testing.T, name, method, path string, form url.Values, seed func
 		client := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		}}
-		
+
 		// perform request
 		var resp *http.Response
 		var err error
