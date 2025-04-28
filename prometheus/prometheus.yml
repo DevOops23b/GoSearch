@@ -6,6 +6,7 @@ scrape_configs:
   - job_name: 'gosearch'
     scheme: https
     static_configs:
-      - targets: ['gosearch.dk:8081']
+      targets: 
+        - 'gosearch.dk'
     tls_config:
       insecure_skip_verify: true
