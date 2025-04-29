@@ -8,5 +8,5 @@ scrape_configs:
     scheme: http
     static_configs:
       - targets: 
-          - 'localhost:8080'
+          - '40.91.244.170:8081'
       
