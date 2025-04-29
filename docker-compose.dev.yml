@@ -20,12 +20,11 @@ services:
       - STATIC_PATH=${STATIC_PATH}
       - SESSION_SECRET=${SESSION_SECRET}
     depends_on:
-      postgres:
-        condition: service_started
-      elasticsearch:
-        condition: service_healthy
+      - postgres
+      - elasticsearch
     restart: always
     command: /app/entrypoint.sh
+    mem_limit: 256m
 
   postgres:
     image: postgres:13
@@ -35,10 +34,13 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+      POSTGRES_SHARED_BUFFERS: 64MB
+      POSTGRES_WORK_MEM: 4MB
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    mem_limit: 200m  
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.5.0
@@ -46,29 +48,23 @@ services:
     environment:
       discovery.type: single-node
       ELASTIC_PASSWORD: ${ES_PASSWORD}
-      ES_JAVA_OPTS: "-Xms256m -Xmx256m"
+      ES_JAVA_OPTS: "-Xms128m -Xmx128m"
       xpack.security.enabled: "false"
       xpack.security.http.ssl.enabled: "false"
-
-      indices.memory.index_buffer_size: "10%"
-      indices.queries.cache.size: "5%"
-      thread_pool.write.queue_size: 200
+      indices.memory.index_buffer_size: "5%"
+      indices.queries.cache.size: "3%"
+      indices.fielddata.cache.size: "3%"
+      indices.recovery.max_bytes_per_sec: "20mb"
+      thread_pool.write.queue_size: 100
+      thread_pool.search.queue_size: 100
+      cluster.routing.allocation.disk.threshold_enabled: "false"
     ports:
       - "9200:9200"
       - "9300:9300"
     volumes:
       - esdata:/usr/share/elasticsearch/data
-    mem_limit: 512m
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    healthcheck:
-      test: ["CMD-SHELL", "curl http://localhost:9200 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+    mem_limit: 256m  
+    restart: always
       
 
 volumes:
