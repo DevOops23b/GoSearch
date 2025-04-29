@@ -58,10 +58,11 @@ services:
       - "9300:9300"
     volumes:
       - esdata:/usr/share/elasticsearch/data
-    deploy:
-      resources:
-        limits:
-          memory: 512M
+    mem_limit: 512m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:9200 || exit 1"]
       interval: 10s
