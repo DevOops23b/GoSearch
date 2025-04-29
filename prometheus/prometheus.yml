@@ -4,6 +4,7 @@ global:
 
 scrape_configs:
   - job_name: 'gosearch'
+    metrics_path: '/metrics'
     scheme: https
     tls_config:
       insecure_skip_verify: true

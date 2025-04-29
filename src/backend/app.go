@@ -129,6 +129,88 @@ func metricsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func startMonitoring() {
+
+	// Start CPU monitoring
+	go monitorCPU()
+
+	// Start certificate monitoring
+	go certificateMonitoring()
+}
+
+
+func monitorCPU() {
+	for {
+		cpuPercent, err := cpu.Percent(time.Second, false)
+		if err != nil {
+			log.Printf("Error moitoring CPU: %v", err)
+		} else if len(cpuPercent) > 0 {
+			cpuLoadPercentage.Set(cpuPercent[0])
+		}
+		time.Sleep(30 * time.Second)
+	}
+}
+
+func certificateMonitoring() {
+	domains := []string{"gosearch.dk"}
+
+	for {
+		for _, domain := range domains {
+			checkCertificate(domain)
+		}
+		time.Sleep(1 * time.Hour)
+	}
+}
+
+func checkCertificate(domain string) {
+	rootCAs, err := x509.SystemCertPool()
+	if err != nil {
+		log.Printf("Error loading system certification pool: %v", err)
+		rootCAs = x509.NewCertPool()
+	}
+
+	config := &tls.Config{
+		RootCAs: rootCAs,
+		ServerName: domain,
+	}
+
+	conn, err := tls.Dial("tcp", domain+":443", config)
+
+	certValid := 0.0
+	daysUntilExpiry := 0.0
+
+	if err != nil {
+		log.Printf("Certificate validation failed for %s: %v", domain, err)
+
+	} else { 
+		defer conn.Close()
+
+		if len(conn.ConnectionState().PeerCertificates) > 0 {
+			cert := conn.ConnectionState().PeerCertificates[0]
+
+			daysUntilExpiry = time.Until(cert.NotAfter).Hours()/24
+
+			opts := x509.VerifyOptions {
+				DNSName: domain,
+				Roots: rootCAs,
+			}
+
+			if _, err := cert.Verify(opts); err == nil {
+				certValid = 1.0
+
+			} else {
+				log.Printf("Certificate chain validation failed for %s: %v", domain, err)
+			}
+		} else {
+			log.Printf("No certificates found for %s", domain)
+		}
+
+	}
+
+	certExpiryDays.WithLabelValues(domain).Set(daysUntilExpiry)
+	certValidity.WithLabelValues(domain).Set(certValid)
+}
+
 // Updates the user counter with current hour and weekday
 func incrementNewUserCounter() {
 	now := time.Now()
@@ -815,9 +897,15 @@ func startCronScheduler() {
 /// Main
 //////////////////////////////////////////////////////////////////////////////////
 
+/*
+func setUpMetricsEndpoint(r *mux.Router) {
+	r.Path("/metrics").Handler(promhttp.Handler())
+}
+*/
 func main() {
 
 	// Goroutine for monitoring CPU usage every 30 seconds
+	/*
 	go func() {
 		for {
 			cpuPercent, _ := cpu.Percent(time.Second, false)
@@ -827,8 +915,11 @@ func main() {
 			time.Sleep(30 * time.Second)
 		}
 	}()
+		*/
 	
 	// Goroutine for monitoring certificate expiry days and validation
+
+	/*
 	go func() {
 
 		domain := "gosearch.dk"
@@ -883,6 +974,7 @@ func main() {
 
 
 	}()
+		*/
 
 
 	// initialiserer databasen og forbinder til den.
@@ -900,13 +992,23 @@ func main() {
 	}
 	fmt.Println("Database connection successful!")
 
+	startMonitoring()
+
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
 	r := mux.NewRouter()
 
+	fmt.Println("Registering /metrics endpoint...")
+    r.Handle("/metrics", promhttp.Handler())
+
 	// Applying middleware function to all routes
 	
-	r.Use(metricsMiddleware)
+	//r.Use(metricsMiddleware)
+
+	appRouter := r.NewRoute().Subrouter()
+    appRouter.Use(metricsMiddleware)
+
+	//setUpMetricsEndpoint(r)
 
 	/*
 	r.Use(func(next http.Handler) http.Handler {
@@ -915,7 +1017,7 @@ func main() {
 	*/
 
 	// Adding metrics endpoint
-	r.Path("/metrics").Handler(promhttp.Handler())
+	//r.Path("/metrics").Handler(promhttp.Handler())
 
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET")             // Forside
