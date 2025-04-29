@@ -1235,6 +1235,6 @@ func main() {
 
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.
-	log.Fatal(http.ListenAndServe(":8081", r))
+	log.Fatal(http.ListenAndServe("0.0.0.0:8081", r))
 
 }
