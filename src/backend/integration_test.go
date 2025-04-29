@@ -1,9 +1,7 @@
-
 package main
 
 import (
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,12 +9,19 @@ import (
 	"strings"
 	"testing"
 
+	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 )
 
 // setupRouter duplicates main() route setup for testing.
 func setupRouter() http.Handler {
+
+	if esClient == nil {
+		initElasticsearch()
+	}
+
 	r := mux.NewRouter()
 	r.HandleFunc("/", rootHandler).Methods("GET")
 	r.HandleFunc("/about", aboutHandler).Methods("GET")
@@ -70,7 +75,7 @@ func runTest(t *testing.T, name, method, path string, form url.Values, seed func
 		client := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		}}
-		
+
 		// perform request
 		var resp *http.Response
 		var err error
@@ -140,6 +145,9 @@ func TestIntegration(t *testing.T) {
 					"TestTitle", "/test-url", "en", "2025-01-01", "TestContent",
 				); err != nil {
 					t.Fatalf("Search seed failed: %v", err)
+				}
+				if err := syncPagesToElasticsearch(); err != nil {
+					t.Fatalf("Failed to sync pages to Elasticsearch: %v", err)
 				}
 			},
 			check: func(resp *http.Response, body string) {

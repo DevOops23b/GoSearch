@@ -167,7 +167,6 @@ func queryDB(query string, args ...interface{}) (*sql.Rows, error) {
 	return db.Query(query, args...)
 }
 
-
 func closeDB() {
 	if db != nil {
 		db.Close()
