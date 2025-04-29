@@ -17,6 +17,11 @@ import (
 
 // setupRouter duplicates main() route setup for testing.
 func setupRouter() http.Handler {
+
+	if esClient == nil {
+		initElasticsearch()
+	}
+
 	r := mux.NewRouter()
 	r.HandleFunc("/", rootHandler).Methods("GET")
 	r.HandleFunc("/about", aboutHandler).Methods("GET")
