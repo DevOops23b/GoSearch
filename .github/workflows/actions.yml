@@ -28,7 +28,7 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
-          
+
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -52,6 +52,12 @@ jobs:
         run: |
           go mod tidy
           go mod download
+
+      - name: Set environment variables for Elasticsearch
+        run: |
+          echo "ES_HOST=localhost" >> $GITHUB_ENV
+          echo "ES_USERNAME=elastic" >> $GITHUB_ENV
+          echo "ES_PASSWORD=changeme" >> $GITHUB_ENV      
 
       - name: Run tests
         working-directory: ./src/backend
