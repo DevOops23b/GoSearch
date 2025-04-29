@@ -146,6 +146,9 @@ func TestIntegration(t *testing.T) {
 				); err != nil {
 					t.Fatalf("Search seed failed: %v", err)
 				}
+				if err := syncPagesToElasticsearch(); err != nil {
+					t.Fatalf("Failed to sync pages to Elasticsearch: %v", err)
+				}
 			},
 			check: func(resp *http.Response, body string) {
 				if resp.StatusCode != http.StatusOK {
