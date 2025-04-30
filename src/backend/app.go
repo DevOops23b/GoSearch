@@ -1,9 +1,9 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -37,7 +37,7 @@ import (
 	// Import the cron library to schedule periodic tasks
 	// PostgreSQL driver instead of SQLite.
 	_ "github.com/lib/pq"
-	
+
 	// For monitoring
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -61,8 +61,8 @@ var (
 
 	httpRequestDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name: "http_request_duration_seconds",
-			Help: "Duration of HTTP requests in seconds",
+			Name:    "http_request_duration_seconds",
+			Help:    "Duration of HTTP requests in seconds",
 			Buckets: prometheus.DefBuckets,
 		},
 		[]string{"method", "endpoint"},
@@ -79,7 +79,7 @@ var (
 		prometheus.GaugeOpts{
 			Name: "tls_certificate_expiry_days",
 			Help: "Days until the tls certificate expires",
-		}, 
+		},
 		[]string{"domain"},
 	)
 
@@ -87,7 +87,7 @@ var (
 		prometheus.GaugeOpts{
 			Name: "tls_certificate_validity",
 			Help: "Certificate validity (1 = valid, 0 = invalid)",
-		}, 
+		},
 		[]string{"domain"},
 	)
 
@@ -97,10 +97,8 @@ var (
 			Help: "New users",
 		},
 		[]string{"hour_of_day", "day_of_week"},
-	)	
+	)
 )
-
-
 
 type statusRecorder struct {
 	http.ResponseWriter
@@ -113,16 +111,15 @@ func (rec *statusRecorder) WriteHeader(statusCode int) {
 }
 
 func metricsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Custom response writer to track status
 		recorder := &statusRecorder{
 			ResponseWriter: w,
-			statusCode: 200,
+			statusCode:     200,
 		}
 		start := time.Now()
 
 		next.ServeHTTP(recorder, r)
-
 
 		// Record metrics after the request is processed
 		duration := time.Since(start).Seconds()
@@ -146,7 +143,6 @@ func startMonitoring() {
 	// Start certificate monitoring
 	go certificateMonitoring()
 }
-
 
 func monitorCPU() {
 	for {
@@ -179,7 +175,7 @@ func checkCertificate(domain string) {
 	}
 
 	config := &tls.Config{
-		RootCAs: rootCAs,
+		RootCAs:    rootCAs,
 		ServerName: domain,
 	}
 
@@ -191,17 +187,17 @@ func checkCertificate(domain string) {
 	if err != nil {
 		log.Printf("Certificate validation failed for %s: %v", domain, err)
 
-	} else { 
+	} else {
 		defer conn.Close()
 
 		if len(conn.ConnectionState().PeerCertificates) > 0 {
 			cert := conn.ConnectionState().PeerCertificates[0]
 
-			daysUntilExpiry = time.Until(cert.NotAfter).Hours()/24
+			daysUntilExpiry = time.Until(cert.NotAfter).Hours() / 24
 
-			opts := x509.VerifyOptions {
+			opts := x509.VerifyOptions{
 				DNSName: domain,
-				Roots: rootCAs,
+				Roots:   rootCAs,
 			}
 
 			if _, err := cert.Verify(opts); err == nil {
@@ -228,12 +224,6 @@ func incrementNewUserCounter() {
 
 	newUserCounter.WithLabelValues(hourOfDay, dayOfWeek).Inc()
 }
-
-
-
-
-
-
 
 ///////////////////////////////////////////////////////////////////////////////////
 /// Configurations
@@ -1115,85 +1105,7 @@ func startCronScheduler() {
 /// Main
 //////////////////////////////////////////////////////////////////////////////////
 
-/*
-func setUpMetricsEndpoint(r *mux.Router) {
-	r.Path("/metrics").Handler(promhttp.Handler())
-}
-*/
 func main() {
-
-	// Goroutine for monitoring CPU usage every 30 seconds
-	/*
-	go func() {
-		for {
-			cpuPercent, _ := cpu.Percent(time.Second, false)
-			if len(cpuPercent) > 0 {
-				cpuLoadPercentage.Set(cpuPercent[0])
-			}
-			time.Sleep(30 * time.Second)
-		}
-	}()
-		*/
-	
-	// Goroutine for monitoring certificate expiry days and validation
-
-	/*
-	go func() {
-
-		domain := "gosearch.dk"
-
-		rootCAs, _ := x509.SystemCertPool()
-		if rootCAs != nil {
-			rootCAs = x509.NewCertPool()
-		}
-
-		// TLS configuration
-		config := &tls.Config{
-			RootCAs: rootCAs,
-			ServerName: domain,
-		}
-
-		conn, err := tls.Dial("tcp", domain+":443", config)
-
-		certValid := 1.0
-
-		var daysUntilExpiry float64
-
-		if err != nil {
-			log.Printf("Certificate validation failed for %s: %v", domain, err)
-			certValid = 0.0
-		} else {
-			cert := conn.ConnectionState().PeerCertificates[0]
-
-			daysUntilExpiry = time.Until(cert.NotAfter).Hours()/24
-
-
-			// Verify certificate validity
-
-			opts := x509.VerifyOptions{
-				DNSName: domain,
-				Roots: rootCAs,
-			}
-
-			_, err = cert.Verify(opts)
-
-			if err != nil {
-				log.Printf("Certificate chain validation failed: %v", err)
-				certValid = 0.0
-			}
-
-			conn.Close()
-
-		}
-
-		// Update metrics
-		certExpiryDays.WithLabelValues(domain).Set(daysUntilExpiry)
-		certValidity.WithLabelValues(domain).Set(certValid)
-
-
-	}()
-		*/
-
 
 	// initialiserer databasen og forbinder til den.
 	initDB()
@@ -1209,7 +1121,7 @@ func main() {
 	///NEW: initialize searchLogger////
 	logPath := os.Getenv("SEARCH_LOG_PATH")
 	if logPath == "" {
-		logPath = "/app/src/backend/search.log" // Default for Docker
+		logPath = "search.log" // Default for Docker
 	}
 
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
@@ -1227,7 +1139,7 @@ func main() {
 	// Start the cron scheduler to run checkTables periodically
 	startCronScheduler()
 
-	err := db.Ping()
+	err = db.Ping()
 	if err != nil {
 		log.Fatalf("Database connection failed: %v", err)
 	}
@@ -1240,25 +1152,12 @@ func main() {
 	r := mux.NewRouter()
 
 	fmt.Println("Registering /metrics endpoint...")
-    r.Handle("/metrics", promhttp.Handler())
+	r.Handle("/metrics", promhttp.Handler())
 
 	// Applying middleware function to all routes
-	
-	//r.Use(metricsMiddleware)
 
 	appRouter := r.NewRoute().Subrouter()
-    appRouter.Use(metricsMiddleware)
-
-	//setUpMetricsEndpoint(r)
-
-	/*
-	r.Use(func(next http.Handler) http.Handler {
-		return metricsMiddleware(next)
-	})
-	*/
-
-	// Adding metrics endpoint
-	//r.Path("/metrics").Handler(promhttp.Handler())
+	appRouter.Use(metricsMiddleware)
 
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET")             // Forside
@@ -1280,6 +1179,6 @@ func main() {
 
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.
-	log.Fatal(http.ListenAndServe(":8081", r))
+	log.Fatal(http.ListenAndServe(":8080", r))
 
 }
