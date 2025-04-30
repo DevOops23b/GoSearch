@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,7 +37,193 @@ import (
 	// Import the cron library to schedule periodic tasks
 	// PostgreSQL driver instead of SQLite.
 	_ "github.com/lib/pq"
+
+	// For monitoring
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/shirou/gopsutil/cpu"
 )
+
+///////////////////////////////////////////////////////////////////////////////////
+/// Monitoring with Prometheus
+///////////////////////////////////////////////////////////////////////////////////
+
+// Define metrics
+var (
+	httpRequestsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"method", "endpoint", "status"},
+	)
+
+	httpRequestDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duration_seconds",
+			Help:    "Duration of HTTP requests in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "endpoint"},
+	)
+
+	cpuLoadPercentage = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "cpu_load_percentage",
+			Help: "Current cpu load in percent",
+		},
+	)
+
+	certExpiryDays = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "tls_certificate_expiry_days",
+			Help: "Days until the tls certificate expires",
+		},
+		[]string{"domain"},
+	)
+
+	certValidity = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "tls_certificate_validity",
+			Help: "Certificate validity (1 = valid, 0 = invalid)",
+		},
+		[]string{"domain"},
+	)
+
+	newUserCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "new_users_total_count",
+			Help: "New users",
+		},
+		[]string{"hour_of_day", "day_of_week"},
+	)
+)
+
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rec *statusRecorder) WriteHeader(statusCode int) {
+	rec.statusCode = statusCode
+	rec.ResponseWriter.WriteHeader(statusCode)
+}
+
+func metricsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Custom response writer to track status
+		recorder := &statusRecorder{
+			ResponseWriter: w,
+			statusCode:     200,
+		}
+		start := time.Now()
+
+		next.ServeHTTP(recorder, r)
+
+		// Record metrics after the request is processed
+		duration := time.Since(start).Seconds()
+		httpRequestDuration.WithLabelValues(r.Method, r.URL.Path).Observe(duration)
+
+		// Use actual status code
+		httpRequestsTotal.WithLabelValues(
+			r.Method,
+			r.URL.Path,
+			strconv.Itoa(recorder.statusCode),
+		).Inc()
+
+	})
+}
+
+func startMonitoring() {
+
+	// Start CPU monitoring
+	go monitorCPU()
+
+	// Start certificate monitoring
+	go certificateMonitoring()
+}
+
+func monitorCPU() {
+	for {
+		cpuPercent, err := cpu.Percent(time.Second, false)
+		if err != nil {
+			log.Printf("Error moitoring CPU: %v", err)
+		} else if len(cpuPercent) > 0 {
+			cpuLoadPercentage.Set(cpuPercent[0])
+		}
+		time.Sleep(30 * time.Second)
+	}
+}
+
+func certificateMonitoring() {
+	domains := []string{"gosearch.dk"}
+
+	for {
+		for _, domain := range domains {
+			checkCertificate(domain)
+		}
+		time.Sleep(1 * time.Hour)
+	}
+}
+
+func checkCertificate(domain string) {
+	rootCAs, err := x509.SystemCertPool()
+	if err != nil {
+		log.Printf("Error loading system certification pool: %v", err)
+		rootCAs = x509.NewCertPool()
+	}
+
+	config := &tls.Config{
+		RootCAs:    rootCAs,
+		ServerName: domain,
+	}
+
+	conn, err := tls.Dial("tcp", domain+":443", config)
+
+	certValid := 0.0
+	daysUntilExpiry := 0.0
+
+	if err != nil {
+		log.Printf("Certificate validation failed for %s: %v", domain, err)
+
+	} else {
+		defer conn.Close()
+
+		if len(conn.ConnectionState().PeerCertificates) > 0 {
+			cert := conn.ConnectionState().PeerCertificates[0]
+
+			daysUntilExpiry = time.Until(cert.NotAfter).Hours() / 24
+
+			opts := x509.VerifyOptions{
+				DNSName: domain,
+				Roots:   rootCAs,
+			}
+
+			if _, err := cert.Verify(opts); err == nil {
+				certValid = 1.0
+
+			} else {
+				log.Printf("Certificate chain validation failed for %s: %v", domain, err)
+			}
+		} else {
+			log.Printf("No certificates found for %s", domain)
+		}
+
+	}
+
+	certExpiryDays.WithLabelValues(domain).Set(daysUntilExpiry)
+	certValidity.WithLabelValues(domain).Set(certValid)
+}
+
+// Updates the user counter with current hour and weekday
+func incrementNewUserCounter() {
+	now := time.Now()
+	hourOfDay := strconv.Itoa(now.Hour())
+	dayOfWeek := now.Weekday().String()
+
+	newUserCounter.WithLabelValues(hourOfDay, dayOfWeek).Inc()
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
 /// Configurations
@@ -755,6 +943,9 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Function to update number of users along with when they were created
+	incrementNewUserCounter()
+
 	// Create session and log the user in
 	session, err := store.Get(r, "session-name")
 	if err != nil {
@@ -915,6 +1106,7 @@ func startCronScheduler() {
 //////////////////////////////////////////////////////////////////////////////////
 
 func main() {
+
 	// initialiserer databasen og forbinder til den.
 	initDB()
 	defer closeDB()
@@ -929,7 +1121,7 @@ func main() {
 	///NEW: initialize searchLogger////
 	logPath := os.Getenv("SEARCH_LOG_PATH")
 	if logPath == "" {
-		logPath = "/app/src/backend/search.log" // Default for Docker
+		logPath = "search.log" // Default for Docker
 	}
 
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
@@ -947,9 +1139,25 @@ func main() {
 	// Start the cron scheduler to run checkTables periodically
 	startCronScheduler()
 
+	err = db.Ping()
+	if err != nil {
+		log.Fatalf("Database connection failed: %v", err)
+	}
+	fmt.Println("Database connection successful!")
+
+	startMonitoring()
+
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
 	r := mux.NewRouter()
+
+	fmt.Println("Registering /metrics endpoint...")
+	r.Handle("/metrics", promhttp.Handler())
+
+	// Applying middleware function to all routes
+
+	appRouter := r.NewRoute().Subrouter()
+	appRouter.Use(metricsMiddleware)
 
 	//Definerer routerne.
 	r.HandleFunc("/", rootHandler).Methods("GET")             // Forside
