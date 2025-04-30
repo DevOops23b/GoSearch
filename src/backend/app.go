@@ -245,6 +245,8 @@ var templatePath string
 
 var staticPath string
 
+var searchLogger = log.New(os.Stdout, "SEARCH: ", log.LstdFlags)
+
 func init() {
 
 	if err := godotenv.Load(".env.local"); err != nil {
@@ -485,6 +487,28 @@ func initElasticsearch() {
 }
 
 func searchPagesInEs(query string) ([]Page, error) {
+	///// TESTS FALLBACK ///////////
+	if esClient == nil {
+		// Simple DB search for test mode
+		var pages []Page
+		sqlStmt := "SELECT title, url, content FROM pages WHERE content LIKE ?"
+		likeQ := "%" + query + "%"
+		rows, err := db.Query(sqlStmt, likeQ)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var p Page
+			if err := rows.Scan(&p.Title, &p.URL, &p.Content); err != nil {
+				continue
+			}
+			pages = append(pages, p)
+		}
+		return pages, nil
+	}
+	/////// PRODUCTION: real Elasticsearch search ───────────────────────────
 	var pages []Page
 
 	searchBody := strings.NewReader(fmt.Sprintf(`{
@@ -621,11 +645,16 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 // Viser search api-server.
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	//Henter search-query fra URL-parameteren.
+	log.Println("Search handler called")
+
 	queryParam := strings.TrimSpace(r.URL.Query().Get("q"))
 	if queryParam == "" {
 		http.Error(w, "No search query provided", http.StatusBadRequest)
 		return
 	}
+	//TO LOG THE QUERY//
+	log.Printf("Search query: %q from %s", queryParam, r.RemoteAddr)
+	searchLogger.Printf("query=%q from=%s", queryParam, r.RemoteAddr)
 
 	//Nuild search against Elasticsearch
 	pages, err := searchPagesInEs(queryParam)
@@ -1175,6 +1204,22 @@ func main() {
 
 	if err := syncPagesToElasticsearch(); err != nil {
 		log.Fatalf("Failed to sync pages: %v", err)
+	}
+
+	///NEW: initialize searchLogger////
+	logPath := os.Getenv("SEARCH_LOG_PATH")
+	if logPath == "" {
+		logPath = "/app/src/backend/search.log" // Default for Docker
+	}
+
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("Warning: could not open search log file: %v, using stdout instead", err)
+		searchLogger = log.New(os.Stdout, "SEARCH: ", log.LstdFlags)
+	} else {
+		log.Printf("Search logs will be written to %s", logPath)
+		searchLogger = log.New(f, "SEARCH: ", log.LstdFlags)
+		defer f.Close()
 	}
 
 	checkTables()
