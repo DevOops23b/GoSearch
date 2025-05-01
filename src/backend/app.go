@@ -41,11 +41,11 @@ func main() {
 		log.Println("Password reset functionality successfully initialized")
 	}
 
-	if err := forceResetForAllUsers(); err != nil {
+	/*if err := forceResetForAllUsers(); err != nil {
 		log.Printf("Warning: Failed to force password reset for all users: %v", err)
 	} else {
 		log.Println("Successfully forced all users to reset their passwords")
-	}
+	}*/
 
 	//Initialize Elasticsearch
 	initElasticsearch()
