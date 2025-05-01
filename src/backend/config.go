@@ -10,10 +10,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var (
-	searchLogger *log.Logger
-	staticPath   = "static"
-)
+var staticPath = "static"
+
+var searchLogger = log.New(os.Stdout, "SEARCH: ", log.LstdFlags)
 
 var CONN_STR string
 
