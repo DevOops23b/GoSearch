@@ -3,3 +3,15 @@
 
 ## Run program:
 $ run go app.go
+
+## With docker
+## First build:
+  docker compose -f docker-compose.dev.yml build
+## The run up:
+  docker compose -f docker-compose.dev.yml up
+
+## If you want to rebuild with no cache:
+  docker compose -f docker-compose.dev.yml build --no-cache
+
+## To take it down:
+  docker compose -f docker-compose.dev.yml down
