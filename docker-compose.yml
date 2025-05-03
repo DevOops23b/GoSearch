@@ -4,6 +4,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:

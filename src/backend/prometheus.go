@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
+	//"crypto/x509" maybe use it later
 	"log"
 	"net/http"
 	"strconv"
@@ -131,14 +131,16 @@ func certificateMonitoring() {
 }
 
 func checkCertificate(domain string) {
+	/* Can be added later for more advanced monitoring
 	rootCAs, err := x509.SystemCertPool()
 	if err != nil {
 		log.Printf("Error loading system certification pool: %v", err)
-		rootCAs = x509.NewCertPool()
+		//rootCAs = x509.NewCertPool()
 	}
+	*/
 
 	config := &tls.Config{
-		RootCAs:    rootCAs,
+		InsecureSkipVerify:    true,
 		ServerName: domain,
 	}
 
@@ -158,6 +160,18 @@ func checkCertificate(domain string) {
 
 			daysUntilExpiry = time.Until(cert.NotAfter).Hours() / 24
 
+			if time.Now().After(cert.NotAfter) || time.Now().Before(cert.NotBefore) {
+				log.Printf("Certificate for %s is outside validity period", domain)
+			} else {
+				if err := cert.VerifyHostname(domain); err != nil {
+					log.Printf("Hostname verification failed for %s: %v", domain, err)
+				} else {
+					certValid = 1.0
+				}
+			}
+
+
+			/*
 			opts := x509.VerifyOptions{
 				DNSName: domain,
 				Roots:   rootCAs,
@@ -171,6 +185,9 @@ func checkCertificate(domain string) {
 			}
 		} else {
 			log.Printf("No certificates found for %s", domain)
+			*/
+		} else {
+			log.Printf("No certifcates found for %s", domain)
 		}
 
 	}
