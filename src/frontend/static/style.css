@@ -1,8 +1,10 @@
 /* Website Defaults */
-html, body {
-    height: 100%; /* Sørger for at tage hele skærmhøjden */
+html,
+body {
+    height: 100%;
+    /* Sørger for at tage hele skærmhøjden */
     margin: 0;
-    padding: 0;
+    padding: 0 20px;
     font-family: 'Trebuchet MS', sans-serif;
     font-size: 14px;
     display: flex;
@@ -10,13 +12,15 @@ html, body {
 }
 
 main {
-    flex-grow: 1; /* Skubber footeren til bunden */
+    flex-grow: 1;
+    /* Skubber footeren til bunden */
 }
 
 .page {
     display: flex;
     flex-direction: column;
-    min-height: 100vh; /* Minimum højde = hele viewportens højde */
+    min-height: 100vh;
+    /* Minimum højde = hele viewportens højde */
 }
 
 /*div.page div.body {
@@ -68,12 +72,15 @@ nav {
     text-align: center;
 }
 
-nav h1, nav a {
+nav h1,
+nav a {
     display: inline-block;
     margin-right: 20px;
 }
 
-#nav-login, #nav-register, #nav-logout {
+#nav-login,
+#nav-register,
+#nav-logout {
     float: right;
 }
 
@@ -97,7 +104,7 @@ button {
 }
 
 button:hover {
-    background-color: #c0c0c0; 
+    background-color: #c0c0c0;
 }
 
 button:active {
@@ -107,7 +114,7 @@ button:active {
 
 footer {
     background: #eee;
-    color: #888;
+    color: #555;
     padding: 10px;
     text-align: center;
     font-size: 15px;
