@@ -1,27 +1,22 @@
 /* Website Defaults */
-html,
-body {
-    height: 100%;
-    /* Sørger for at tage hele skærmhøjden */
+html, body {
+    height: 100%; /* Sørger for at tage hele skærmhøjden */
     margin: 0;
+    padding: 0;
     font-family: 'Trebuchet MS', sans-serif;
     font-size: 14px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    padding: 0 20px;
 }
 
 main {
-    flex-grow: 1;
-    /* Skubber footeren til bunden */
+    flex-grow: 1; /* Skubber footeren til bunden */
 }
 
 .page {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
-    /* Minimum højde = hele viewportens højde */
+    min-height: 100vh; /* Minimum højde = hele viewportens højde */
 }
 
 /*div.page div.body {
@@ -73,15 +68,12 @@ nav {
     text-align: center;
 }
 
-nav h1,
-nav a {
+nav h1, nav a {
     display: inline-block;
     margin-right: 20px;
 }
 
-#nav-login,
-#nav-register,
-#nav-logout {
+#nav-login, #nav-register, #nav-logout {
     float: right;
 }
 
@@ -105,7 +97,7 @@ button {
 }
 
 button:hover {
-    background-color: #c0c0c0;
+    background-color: #c0c0c0; 
 }
 
 button:active {
@@ -120,31 +112,4 @@ footer {
     text-align: center;
     font-size: 15px;
     width: 100%;
-}
-
-.search button,
-.weather button {
-    flex-shrink: 0;
-    width: auto;
-    padding: 10px 20px;
-}
-
-.search input,
-.weather input {
-    flex: 1;
-    width: auto;
-    margin: 0;
-    max-width: none;
-}
-
-.search form,
-.weather form {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-}
-
-.search {
-    margin-bottom: 20px;
 }
