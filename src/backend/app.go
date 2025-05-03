@@ -56,31 +56,30 @@ func main() {
 	///Opretter en ny router
 	r := mux.NewRouter()
 
-	fmt.Println("Registering /metrics endpoint...")
-	r.Handle("/metrics", promhttp.Handler())
-
 	// Applying middleware function to all routes
-
 	appRouter := r.NewRoute().Subrouter()
 	appRouter.Use(metricsMiddleware)
 
 	//Definerer routerne.
-	r.HandleFunc("/", rootHandler).Methods("GET")             // Forside
-	r.HandleFunc("/about", aboutHandler).Methods("GET")       //about-side
-	r.HandleFunc("/login", login).Methods("GET")              //Login-side
-	r.HandleFunc("/register", registerHandler).Methods("GET") //Register-side
-	r.HandleFunc("/search", searchHandler).Methods("GET")
+	appRouter.HandleFunc("/", rootHandler).Methods("GET")             // Forside
+	appRouter.HandleFunc("/about", aboutHandler).Methods("GET")       //about-side
+	appRouter.HandleFunc("/login", login).Methods("GET")              //Login-side
+	appRouter.HandleFunc("/register", registerHandler).Methods("GET") //Register-side
+	appRouter.HandleFunc("/search", searchHandler).Methods("GET")
 
 	// Definerer api-erne
-	r.HandleFunc("/api/login", apiLogin).Methods("POST")
-	r.HandleFunc("/api/logout", logoutHandler).Methods("GET")
-	r.HandleFunc("/api/search", searchHandler).Methods("GET")
-	r.HandleFunc("/api/search", searchHandler).Methods("POST") // API-ruten for søgninger.
-	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
-	r.HandleFunc("/api/weather", weatherHandler).Methods("GET") //weather-side
+	appRouter.HandleFunc("/api/login", apiLogin).Methods("POST")
+	appRouter.HandleFunc("/api/logout", logoutHandler).Methods("GET")
+	appRouter.HandleFunc("/api/search", searchHandler).Methods("GET")
+	appRouter.HandleFunc("/api/search", searchHandler).Methods("POST") // API-ruten for søgninger.
+	appRouter.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
+	appRouter.HandleFunc("/api/weather", weatherHandler).Methods("GET") //weather-side
 
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(staticPath))))
+
+	fmt.Println("Registering /metrics endpoint...")
+	r.Handle("/metrics", promhttp.Handler())
 
 	fmt.Println("Server running on http://localhost:8080")
 	//Starter serveren.
