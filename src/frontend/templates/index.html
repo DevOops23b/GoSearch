@@ -1,20 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>¿Who Knows?</title>
     <link rel="stylesheet" type="text/css" href="static/style.css">
 </head>
+
 <body>
     <div class="page">
         <nav class="navigation">
             <h1><a id="nav-logo" href="/">¿Who Knows?</a></h1>
             {{ if .UserLoggedIn }}
-                <a id="nav-logout" href="/api/logout">Log out</a>
+            <a id="nav-logout" href="/api/logout">Log out</a>
             {{ else }}
-                <a id="nav-login" href="/login">Log in</a>
-                <a id="nav-register" href="/register">Register</a>
+            <a id="nav-login" href="/login">Log in</a>
+            <a id="nav-register" href="/register">Register</a>
             {{ end }}
         </nav>
 
@@ -22,14 +24,16 @@
             <div class="body">
                 <div class="search">
                     <form action="/api/search" method="GET">
-                        <input type="text" name="q" placeholder="Search..." value="{{.Query}}">
+                        <label for="search-input" class="visually-hidden">Search</label>
+                        <input type="text" id="search-input" name="q" placeholder="Search..." value="{{.Query}}">
                         <button type="submit">Search</button>
                     </form>
                 </div>
 
                 <div class="weather">
                     <form action="/api/weather" method="GET">
-                        <input type="text" name="city" placeholder="City..." required>
+                        <label for="city-input">City:</label>
+                        <input type="text" id="city-input" name="city" placeholder="City..." required>
                         <button type="submit">Check</button>
                     </form>
                 </div>
