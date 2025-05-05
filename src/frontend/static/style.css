@@ -93,7 +93,15 @@ input {
     border-radius: 5px;
 }
 
-button {
+.form-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 1em;
+}
+
+button,
+.home-button {
     width: 10%;
     padding: 10px;
     border: 1px solid #ccc;
@@ -105,17 +113,25 @@ button {
     transition: background-color 0.3s;
 }
 
-button:hover {
+.home-button {
+    display: inline-block;
+
+    width: auto;
+
+}
+
+button:hover,
+.home-button:hover {
     background-color: #c0c0c0;
 }
 
-button:active {
+button:active,
+.home-button:active {
     /*background-color: #f0f0f0;*/
     box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
 }
 
 a {
-
     color: #1a0dab;
 }
 
