@@ -171,7 +171,7 @@ func TestIntegration(t *testing.T) {
 				hash, _ := hashPassword("pass123")
 				if _, err := db.Exec(
 					`INSERT INTO users (username,email,password,password_changed) VALUES (?,?,?,?);`,
-					"user1", "u1@example.com", hash,
+					"user1", "u1@example.com", hash, true,
 				); err != nil {
 					t.Fatalf("Login seed failed: %v", err)
 				}
