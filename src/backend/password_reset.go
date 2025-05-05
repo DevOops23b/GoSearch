@@ -414,7 +414,7 @@ func passwordResetMiddleware(next http.Handler) http.Handler {
 }
 
 // Function to force reset for all users (admin function)
-func forceResetForAllUsers() error {
+/*func forceResetForAllUsers() error {
 	_, err := db.Exec("UPDATE users SET password_changed = FALSE")
 	if err != nil {
 		log.Printf("Error forcing password reset for all users: %v", err)
@@ -422,4 +422,4 @@ func forceResetForAllUsers() error {
 	}
 	log.Println("Successfully forced password reset for all users")
 	return nil
-}
+}*/
