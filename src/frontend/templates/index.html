@@ -10,8 +10,8 @@
 
 <body>
     <div class="page">
-        <nav class="navigation">
-            <h1><a id="nav-logo" href="/">¿Who Knows?</a></h1>
+        <nav class="navigation" aria-label="Main site navigation">
+            <h1><a id="nav-logo" href="/" aria-current="page">¿Who Knows?</a></h1>
             {{ if .UserLoggedIn }}
             <a id="nav-logout" href="/api/logout">Log out</a>
             {{ else }}
@@ -40,7 +40,7 @@
             </div>
         </main>
 
-        <footer>
+        <footer aria-label="Site footer">
             <span>¿Who Knows? &copy; 2025</span>
             <a href="/about">About</a>
         </footer>
