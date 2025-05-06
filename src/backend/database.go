@@ -69,12 +69,12 @@ func checkTables() {
 
 	for rows.Next() {
 		var user User
-		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password)
+		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.PasswordChanged)
 		if err != nil {
 			log.Printf("Error scanning user: %v", err)
 			continue
 		}
-		fmt.Printf("ID: %d, Username: %s, Email: %s\n", user.ID, user.Username, user.Email)
+		fmt.Printf("ID: %d, Username: %s, Email: %s, Password Changed: %t\n", user.ID, user.Username, user.Email, user.PasswordChanged)
 	}
 
 	// Check pages table

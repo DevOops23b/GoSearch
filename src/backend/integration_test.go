@@ -29,6 +29,8 @@ func setupRouter() http.Handler {
 	r.HandleFunc("/api/search", searchHandler).Methods("GET")
 	r.HandleFunc("/api/login", apiLogin).Methods("POST")
 	r.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
+	r.HandleFunc("/reset-password", resetPasswordHandler).Methods("GET")
+	r.HandleFunc("/api/reset-password", apiResetPasswordHandler).Methods("POST")
 	return r
 }
 
@@ -44,7 +46,8 @@ CREATE TABLE users (
     id INTEGER PRIMARY KEY,
     username TEXT,
     email TEXT,
-    password TEXT
+    password TEXT,
+	password_changed BOOLEAN DEFAULT TRUE
 );
 CREATE TABLE pages (
     title TEXT,
@@ -167,8 +170,8 @@ func TestIntegration(t *testing.T) {
 			seed: func() {
 				hash, _ := hashPassword("pass123")
 				if _, err := db.Exec(
-					`INSERT INTO users (username,email,password) VALUES (?,?,?);`,
-					"user1", "u1@example.com", hash,
+					`INSERT INTO users (username,email,password,password_changed) VALUES (?,?,?,?);`,
+					"user1", "u1@example.com", hash, true,
 				); err != nil {
 					t.Fatalf("Login seed failed: %v", err)
 				}
