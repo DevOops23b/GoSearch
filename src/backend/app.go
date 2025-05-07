@@ -101,6 +101,7 @@ func main() {
 	appRouter.HandleFunc("/login", login).Methods("GET")              //Login-side
 	appRouter.HandleFunc("/register", registerHandler).Methods("GET") //Register-side
 	appRouter.HandleFunc("/search", searchHandler).Methods("GET")
+	appRouter.HandleFunc("/reset-password", resetPasswordHandler).Methods("GET")
 
 	// Definerer api-erne
 	appRouter.HandleFunc("/api/login", apiLogin).Methods("POST")
@@ -109,6 +110,7 @@ func main() {
 	appRouter.HandleFunc("/api/search", searchHandler).Methods("POST") // API-ruten for søgninger.
 	appRouter.HandleFunc("/api/register", apiRegisterHandler).Methods("POST")
 	appRouter.HandleFunc("/api/weather", weatherHandler).Methods("GET") //weather-side
+	appRouter.HandleFunc("/api/reset-password", apiResetPasswordHandler).Methods("POST")
 
 	// sørger for at vi kan bruge de statiske filer som ligger i static-mappen. ex: css.
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(staticPath))))
