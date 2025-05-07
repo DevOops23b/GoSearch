@@ -252,7 +252,7 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var userID int
-	err = db.QueryRow("INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id",
+	err = db.QueryRow("INSERT INTO users (username, email, password, password_changed) VALUES ($1, $2, $3, FALSE) RETURNING id",
 		username, email, hashedPassword).Scan(&userID)
 
 	if err != nil {

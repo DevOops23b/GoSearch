@@ -5,10 +5,11 @@ import (
 )
 
 type User struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	ID              int    `json:"id"`
+	Username        string `json:"username"`
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	PasswordChanged bool
 }
 
 type PageData struct {
@@ -35,4 +36,13 @@ type WeatherResponse struct {
 	Weather []struct {
 		Description string `json:"description"`
 	} `json:"weather"`
+}
+
+type PasswordResetData struct {
+	UserID            int
+	Username          string
+	Email             string
+	ResetToken        string
+	ResetTokenExpires time.Time
+	PasswordChanged   bool
 }

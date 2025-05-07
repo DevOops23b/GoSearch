@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -15,6 +16,36 @@ func main() {
 	// initialiserer databasen og forbinder til den.
 	initDB()
 	defer closeDB()
+
+	// Wait for database to be fully ready
+	maxRetries := 5
+	for i := 0; i < maxRetries; i++ {
+		if err := db.Ping(); err != nil {
+			log.Printf("Database not ready yet, retrying in 2 seconds... (%d/%d)", i+1, maxRetries)
+			time.Sleep(2 * time.Second)
+		} else {
+			log.Println("Database connection confirmed!")
+			break
+		}
+
+		if i == maxRetries-1 {
+			log.Fatalf("Failed to connect to database after %d attempts", maxRetries)
+		}
+	}
+
+	err := setupPasswordResetTable()
+	if err != nil {
+		log.Printf("Warning: Password reset setup had errors: %v", err)
+		log.Println("Will attempt to continue startup anyway...")
+	} else {
+		log.Println("Password reset functionality successfully initialized")
+	}
+
+	/*if err := forceResetForAllUsers(); err != nil {
+		log.Printf("Warning: Failed to force password reset for all users: %v", err)
+	} else {
+		log.Println("Successfully forced all users to reset their passwords")
+	}*/
 
 	//Initialize Elasticsearch
 	initElasticsearch()
@@ -55,6 +86,10 @@ func main() {
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router
 	r := mux.NewRouter()
+	r.Use(passwordResetMiddleware)
+
+	fmt.Println("Registering /metrics endpoint...")
+	r.Handle("/metrics", promhttp.Handler())
 
 	// Applying middleware function to all routes
 	appRouter := r.NewRoute().Subrouter()
