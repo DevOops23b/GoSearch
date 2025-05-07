@@ -23,7 +23,6 @@ func main() {
 		log.Fatalf("Failed to sync pages: %v", err)
 	}
 
-	///NEW: initialize searchLogger////
 	logPath := os.Getenv("SEARCH_LOG_PATH")
 	if logPath == "" {
 		logPath = "search.log" // Default for Docker
@@ -51,6 +50,11 @@ func main() {
 	fmt.Println("Database connection successful!")
 
 	startMonitoring()
+
+	//Scraper hvis ønsket - hvis miljø variabel er sat til 1.
+	if os.Getenv("SCRAPING_ENABLED") == "1" {
+		StartScraping(logPath)
+	}
 
 	// Detter er Gorilla Mux's route handler, i stedet for Flasks indbyggede router-handler
 	///Opretter en ny router

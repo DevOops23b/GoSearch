@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"time"
+	"os"
 
 	"github.com/robfig/cron/v3"
 )
@@ -88,7 +89,7 @@ func checkTables() {
 
 	for rows2.Next() {
 		var page Page
-		err := rows2.Scan(&page.Title, &page.URL, &page.Language, &page.LastUpdated, &page.Content)
+		err := rows2.Scan(&page.URL, &page.Title, &page.Language, &page.LastUpdated, &page.Content)
 		if err != nil {
 			log.Printf("Error scanning page: %v", err)
 			continue
@@ -98,19 +99,55 @@ func checkTables() {
 }
 
 func startCronScheduler() {
-
-	c := cron.New()
-
-	// Schedule the checkTables function to run every minute
-	// Cron expression "*/1 * * * *" means it runs at the start of every minute
-	_, err := c.AddFunc("*/1 * * * *", func() {
-		fmt.Println("Cron job: Running checkTables at", time.Now())
-		checkTables()
-	})
-	if err != nil {
-		log.Fatalf("Error scheduling cron job: %v", err)
-	}
-
-	c.Start()
-
+    c := cron.New()
+    
+    // Schedule the checkTables function to run every minute
+    _, err := c.AddFunc("*/1 * * * *", func() {
+        fmt.Println("Cron job: Running checkTables at", time.Now())
+        checkTables()
+    })
+    if err != nil {
+        log.Fatalf("Error scheduling cron job: %v", err)
+    }
+    
+    // scraping wikipedia every 5. minutes
+    c.AddFunc("*/5 * * * *", func() {
+        fmt.Println("Cron job: Running Wikipedia scraper at", time.Now())
+        logPath := os.Getenv("SEARCH_LOG_PATH")
+        if logPath == "" {
+            logPath = "search.log"
+        }
+        
+        // Track the number of pages before scraping
+        var countBefore int
+        err := db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countBefore)
+        if err != nil {
+            log.Printf("Error getting page count before scraping: %v", err)
+        }
+        
+        // Run scraping
+        StartScraping(logPath)
+        
+        // Check if new pages were added
+        var countAfter int
+        err = db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countAfter)
+        if err != nil {
+            log.Printf("Error getting page count after scraping: %v", err)
+        }
+        
+        // Only sync to Elasticsearch if new pages were added
+        if countAfter > countBefore {
+            log.Printf("New pages added (%d -> %d). Syncing to Elasticsearch.", countBefore, countAfter)
+            err := syncPagesToElasticsearch()
+            if err != nil {
+                log.Printf("Error syncing to Elasticsearch: %v", err)
+            } else {
+                log.Println("Synced scraped pages to Elasticsearch successfully.")
+            }
+        } else {
+            log.Println("No new pages added. Skipping Elasticsearch sync.")
+        }
+    })
+    
+    c.Start()
 }
