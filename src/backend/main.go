@@ -13,6 +13,7 @@ import (
 
 func main() {
 
+	log.Printf("CONN_STR: %s", CONN_STR)
 	// initialiserer databasen og forbinder til den.
 	initDB()
 	defer closeDB()
@@ -40,6 +41,8 @@ func main() {
 	} else {
 		log.Println("Password reset functionality successfully initialized")
 	}
+
+	//!!!Only comment in if all passwords of all users needs to be reset!!!
 
 	/*if err := forceResetForAllUsers(); err != nil {
 		log.Printf("Warning: Failed to force password reset for all users: %v", err)

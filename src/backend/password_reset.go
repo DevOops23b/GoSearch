@@ -190,7 +190,7 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := template.ParseFiles(templatePath + "resetPassword.html")
+	tmpl, err := template.ParseFiles(templatePath+"resetPassword.html", templatePath+"layout.html")
 	if err != nil {
 		log.Printf("Error loading reset password template: %v", err)
 		http.Error(w, "Error loading reset password page", http.StatusInternalServerError)
@@ -198,16 +198,20 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		UserID   int
-		Username string
-		Error    string
+		Title        string
+		UserID       int
+		Username     string
+		Error        string
+		UserLoggedIn bool
 	}{
-		UserID:   userID.(int),
-		Username: username,
-		Error:    "",
+		Title:        "Reset Password",
+		UserID:       userID.(int),
+		Username:     username,
+		Error:        "",
+		UserLoggedIn: true,
 	}
 
-	if err := tmpl.Execute(w, data); err != nil {
+	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
 		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
@@ -294,7 +298,7 @@ func apiResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 // renderResetPasswordError renders the reset password page with an error message
 func renderResetPasswordError(w http.ResponseWriter, r *http.Request, userID int, errorMsg string) {
-	tmpl, err := template.ParseFiles(templatePath + "resetPassword.html")
+	tmpl, err := template.ParseFiles(templatePath+"resetPassword.html", templatePath+"layout.html")
 	if err != nil {
 		log.Printf("Error loading reset password template: %v", err)
 		http.Error(w, "Error loading reset password page", http.StatusInternalServerError)
@@ -320,7 +324,7 @@ func renderResetPasswordError(w http.ResponseWriter, r *http.Request, userID int
 		Error:    errorMsg,
 	}
 
-	if err := tmpl.Execute(w, data); err != nil {
+	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
 		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
