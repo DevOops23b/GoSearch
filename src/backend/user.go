@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -42,22 +43,21 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session-name")
-	if err != nil {
-		http.Error(w, "Session error", http.StatusInternalServerError)
-		return
-	}
+	if err == nil {
+		// Get user ID for session tracking before we delete it
+		if userID, ok := session.Values["user_id"]; ok && userID != nil {
+			sessionID := fmt.Sprintf("%v", userID)
+			removeActiveSession(sessionID, "authenticated")
+		}
 
-	if _, ok := session.Values["user_id"]; !ok {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
+		//Delete session data
+		session.Options.MaxAge = -1 // Expire the session
+		delete(session.Values, "user_id")
 
-	session.Options.MaxAge = -1 // Expire the session
-	delete(session.Values, "user_id")
-
-	if err := session.Save(r, w); err != nil {
-		http.Error(w, "Failed to save session", http.StatusInternalServerError)
-		return
+		if err := session.Save(r, w); err != nil {
+			http.Error(w, "Failed to save session", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -173,6 +173,9 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	userID := fmt.Sprintf("%v", user.ID)
+	incrementUserSessionsTotal("authenticated")
+	trackActiveSession(userID, "authenticated")
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
@@ -249,7 +252,7 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var userID int
-	err = db.QueryRow("INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id",
+	err = db.QueryRow("INSERT INTO users (username, email, password, password_changed) VALUES ($1, $2, $3, TRUE) RETURNING id",
 		username, email, hashedPassword).Scan(&userID)
 
 	if err != nil {
@@ -272,6 +275,10 @@ func apiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Session save error", http.StatusInternalServerError)
 		return
 	}
+
+	sessionID := fmt.Sprintf("%v", userID)
+	incrementUserSessionsTotal("authenticated")
+	trackActiveSession(sessionID, "authenticated")
 
 	// Omdiriger til forsiden (bruger er nu logget ind)
 	http.Redirect(w, r, "/", http.StatusSeeOther)

@@ -20,7 +20,7 @@ FROM alpine:3.21.3
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-RUN apk add --no-cache nodejs=22.13.1-r0 npm=10.9.1-r0
+RUN apk add --no-cache nodejs=22.13.1-r0 npm=10.9.1-r0 postgresql15-client=15.12-r0
 
 RUN addgroup -S nonroot \
     && adduser -S nonroot -G nonroot
@@ -37,6 +37,8 @@ RUN npm ci --only=production
 
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
+
+RUN mkdir -p /app/src/backend/backups && chown -R nonroot:nonroot /app/src/backend/backups
 
 WORKDIR /app/src/backend
 

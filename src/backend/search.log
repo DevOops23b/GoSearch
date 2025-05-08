@@ -9,3 +9,5 @@ SEARCH: 2025/05/08 12:31:24 query="Colorblind" from=192.168.65.1:54586
 SEARCH: 2025/05/08 12:32:22 query="colorblind" from=192.168.65.1:54586
 SEARCH: 2025/05/08 12:33:02 query="colorblind" from=192.168.65.1:54586
 SEARCH: 2025/05/08 12:33:26 query="colorblind" from=192.168.65.1:54586
+SEARCH: 2025/05/03 21:16:19 query="docker" from=[::1]:62435
+SEARCH: 2025/05/03 21:20:19 query="k8s" from=[::1]:62778
