@@ -1,7 +1,7 @@
 const knexSqlite = require('knex')({
     client: 'better-sqlite3',
     connection: {
-      filename: process.env.SQLITE_DB_PATH || './src/whoknows.db' // ændre til '/app/src/whoknows.db' i docker og './src/whoknows.db' hvis det er lokalt.
+      filename: process.env.SQLITE_DB_PATH || '/app/src/whoknows.db' // ændre til '/app/src/whoknows.db' i docker og './src/whoknows.db' hvis det er lokalt.
     },
     useNullAsDefault: true
   });
@@ -9,7 +9,7 @@ const knexSqlite = require('knex')({
   const knexPg = require('knex')({
     client: 'pg',
     connection: {
-      host: process.env.DB_HOST || 'localhost', //ændre her 'localhost/postgres' alt efter om du kører filen lokalt eller fra docker
+      host: process.env.DB_HOST || 'postgres', //ændre her 'localhost/postgres' alt efter om du kører filen lokalt eller fra docker
       user: process.env.DB_USER || 'youruser',
       password: process.env.DB_PASSWORD || 'yourpassword',
       database: process.env.DB_NAME || 'whoknows'

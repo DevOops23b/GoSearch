@@ -5,4 +5,12 @@ exports.up = async function(knex) {
       table.primary(['url']);
     });
 };
+
+exports.down = async function(knex) {
+  await knex.schema.alterTable('pages', function(table) {
+    table.dropPrimary();
+    table.primary(['title']);
+    table.unique(['url']);
+  });
+};
   
