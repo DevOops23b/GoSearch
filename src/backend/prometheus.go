@@ -170,7 +170,7 @@ func certificateMonitoring() {
 
 func checkCertificate(domain string) {
 	config := &tls.Config{
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: false,
 		ServerName:         domain,
 	}
 
