@@ -2,7 +2,8 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
+	"fmt"
+
 	"log"
 	"net/http"
 	"strconv"
@@ -61,6 +62,30 @@ var (
 		},
 		[]string{"hour_of_day", "day_of_week"},
 	)
+
+	userSessionsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "user_sessions_total",
+			Help: "Total number of user sessions by authentication status",
+		},
+		[]string{"auth_status"},
+	)
+
+	userRequestsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "user_requests_total",
+			Help: "Total number of requests by authentication status",
+		},
+		[]string{"auth_status", "endpoint"},
+	)
+
+	activeUserSessions = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "active_user_sessions",
+			Help: "Current number of active user sessions by authentication status",
+		},
+		[]string{"auth_status"},
+	)
 )
 
 type statusRecorder struct {
@@ -81,6 +106,19 @@ func metricsMiddleware(next http.Handler) http.Handler {
 			statusCode:     200,
 		}
 		start := time.Now()
+
+		authStatus := getAuthStatus(r)
+		recordUserRequest(r, authStatus)
+
+		// Track session if available
+		session, err := store.Get(r, "session-name")
+		if err == nil {
+			// Use user_id as session identifier
+			if userID, ok := session.Values["user_id"]; ok && userID != nil {
+				sessionID := fmt.Sprintf("%v", userID)
+				trackActiveSession(sessionID, authStatus)
+			}
+		}
 
 		next.ServeHTTP(recorder, r)
 
@@ -131,15 +169,9 @@ func certificateMonitoring() {
 }
 
 func checkCertificate(domain string) {
-	rootCAs, err := x509.SystemCertPool()
-	if err != nil {
-		log.Printf("Error loading system certification pool: %v", err)
-		rootCAs = x509.NewCertPool()
-	}
-
 	config := &tls.Config{
-		RootCAs:    rootCAs,
-		ServerName: domain,
+		InsecureSkipVerify: false,
+		ServerName:         domain,
 	}
 
 	conn, err := tls.Dial("tcp", domain+":443", config)
@@ -158,19 +190,18 @@ func checkCertificate(domain string) {
 
 			daysUntilExpiry = time.Until(cert.NotAfter).Hours() / 24
 
-			opts := x509.VerifyOptions{
-				DNSName: domain,
-				Roots:   rootCAs,
-			}
-
-			if _, err := cert.Verify(opts); err == nil {
-				certValid = 1.0
-
+			if time.Now().After(cert.NotAfter) || time.Now().Before(cert.NotBefore) {
+				log.Printf("Certificate for %s is outside validity period", domain)
 			} else {
-				log.Printf("Certificate chain validation failed for %s: %v", domain, err)
+				if err := cert.VerifyHostname(domain); err != nil {
+					log.Printf("Hostname verification failed for %s: %v", domain, err)
+				} else {
+					certValid = 1.0
+				}
 			}
+
 		} else {
-			log.Printf("No certificates found for %s", domain)
+			log.Printf("No certifcates found for %s", domain)
 		}
 
 	}
