@@ -11,56 +11,6 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func StartScraping(logPath string) {
-	searchTerms := extractSearchTerms(logPath)
-	if len(searchTerms) == 0 {
-		fmt.Println("No search terms found.")
-		return
-	}
-
-	for _, term := range searchTerms {
-		if alreadyProcessed(term) {
-			fmt.Printf("Skipping already processed term: %s\n", term)
-			continue
-		}
-
-		url := buildWikipediaURL(term)
-		fmt.Printf("Scraping: %s\n", url)
-		page, err := scrapeWikipedia(url)
-		if err != nil {
-			log.Printf("Error scraping %s: %v", term, err)
-			continue
-		}
-
-		err = savePageToDB(page)
-		if err != nil {
-			log.Printf("Error saving page to DB: %v", err)
-			continue
-		}
-		markAsProcessed(term)
-
-	}
-
-}
-
-func alreadyProcessed(term string) bool {
-	var exists bool
-	err := db.QueryRow("SELECT EXISTS (SELECT 1 FROM processed_searches WHERE search_term = $1)", term).Scan(&exists)
-	if err != nil {
-		log.Printf("Error checking processed term: %v", err)
-		return false // fall back to processing
-	}
-	return exists
-}
-
-func markAsProcessed(term string) {
-	_, err := db.Exec("INSERT INTO processed_searches (search_term) VALUES ($1) ON CONFLICT DO NOTHING", term)
-	if err != nil {
-		log.Printf("Error marking term as processed: %v", err)
-	}
-}
-
-
 func extractSearchTerms(logPath string) []string {
 	file, err := os.Open(logPath)
 	if err != nil {
@@ -79,7 +29,6 @@ func extractSearchTerms(logPath string) []string {
 		if len(match) > 1 {
 			term := strings.ToLower(strings.TrimSpace(match[1]))
 			termsMap[term] = true
-
 			fmt.Printf("Extracted search term: %s\n", term)
 		}
 	}
@@ -91,31 +40,85 @@ func extractSearchTerms(logPath string) []string {
 	return terms
 }
 
-func buildWikipediaURL(term string) string {
-	// Konverter til korrekt URL-encoding (fx "farveblind" -> "Farveblindhed")
-	// For demo, antag den bare er korrekt formatteret
-	term = strings.ReplaceAll(term, " ", "_")
-	return fmt.Sprintf("https://da.wikipedia.org/wiki/%s", strings.Title(term))
+func alreadyProcessed(term string) bool {
+	var exists bool
+	err := db.QueryRow("SELECT EXISTS (SELECT 1 FROM processed_searches WHERE search_term = $1)", term).Scan(&exists)
+	if err != nil {
+		log.Printf("Error checking processed term: %v", err)
+		return false // Fallback: antag at den ikke er behandlet
+	}
+	return exists
+}
+
+func markAsProcessed(term string) {
+	_, err := db.Exec("INSERT INTO processed_searches (search_term) VALUES ($1) ON CONFLICT DO NOTHING", term)
+	if err != nil {
+		log.Printf("Error marking term as processed: %v", err)
+	}
 }
 
 
-func scrapeWikipedia(url string) (Page, error) {
+func StartScraping(logPath string) {
+	searchTerms := extractSearchTerms(logPath)
+	if len(searchTerms) == 0 {
+		fmt.Println("No search terms found.")
+		return
+	}
+
+	for _, term := range searchTerms {
+		if alreadyProcessed(term) {
+			fmt.Printf("Skipping already processed term: %s\n", term)
+			continue
+		}
+
+		page, lang, err := tryScrapeInLanguages(term, []string{"da", "en"})
+		if err != nil {
+			log.Printf("Failed to scrape any language for term '%s': %v", term, err)
+			continue
+		}
+
+		err = savePageToDBWithLang(page, lang)
+		if err != nil {
+			log.Printf("Error saving page to DB: %v", err)
+			continue
+		}
+
+		markAsProcessed(term)
+	}
+}
+
+func tryScrapeInLanguages(term string, langs []string) (Page, string, error) {
+	for _, lang := range langs {
+		url := buildWikipediaURL(term, lang)
+		fmt.Printf("Trying to scrape: %s\n", url)
+		page, err := scrapeWikipedia(url, lang)
+		if err == nil && page.Title != "" {
+			return page, lang, nil
+		}
+		log.Printf("Failed scraping %s (%s): %v", term, lang, err)
+	}
+	return Page{}, "", fmt.Errorf("no valid Wikipedia page found for term '%s'", term)
+}
+
+func buildWikipediaURL(term, lang string) string {
+	term = strings.ReplaceAll(term, " ", "_")
+	return fmt.Sprintf("https://%s.wikipedia.org/wiki/%s", lang, strings.Title(term))
+}
+
+func scrapeWikipedia(url string, lang string) (Page, error) {
 	c := colly.NewCollector(
-		colly.AllowedDomains("da.wikipedia.org"),
+		colly.AllowedDomains(fmt.Sprintf("%s.wikipedia.org", lang)),
 	)
 
-	var page Page
-	page.URL = url
+	page := Page{URL: url, Language: lang}
 	var statusCode int
 
-	// Få HTTP statuskoden
 	c.OnResponse(func(r *colly.Response) {
 		statusCode = r.StatusCode
 	})
 
 	c.OnHTML("#firstHeading", func(e *colly.HTMLElement) {
 		page.Title = e.Text
-		fmt.Printf("Scraped title: %s\n", page.Title)
 	})
 
 	c.OnHTML("div.mw-parser-output", func(e *colly.HTMLElement) {
@@ -126,13 +129,11 @@ func scrapeWikipedia(url string) (Page, error) {
 		page.Content = text
 	})
 
-	// Besøg URL'en
 	err := c.Visit(url)
 	if err != nil {
 		return page, err
 	}
 
-	// Tjek for 404 eller anden fejl
 	if statusCode == 404 {
 		return page, fmt.Errorf("page not found (404)")
 	}
@@ -140,9 +141,7 @@ func scrapeWikipedia(url string) (Page, error) {
 	return page, nil
 }
 
-
-
-func savePageToDB(page Page) error {
+func savePageToDBWithLang(page Page, lang string) error {
 	if page.Title == "" || page.URL == "" || page.Content == "" {
 		return fmt.Errorf("invalid page data")
 	}
@@ -153,15 +152,17 @@ func savePageToDB(page Page) error {
 		ON CONFLICT (url) DO UPDATE
 		SET title = EXCLUDED.title,
 		    content = EXCLUDED.content,
+		    language = EXCLUDED.language,
 		    last_updated = NOW()
-	`, page.URL, page.Title, page.Content, "da")
+	`, page.URL, page.Title, page.Content, lang)
 	if err != nil {
 		return fmt.Errorf("error inserting or updating page: %v", err)
 	}
 
-	log.Printf("Saved page to DB (inserted or updated): %s", page.Title)
+	log.Printf("Saved page to DB [%s]: %s", lang, page.Title)
 	return nil
 }
+
 
 
 
