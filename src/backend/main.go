@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+
 func main() {
 
 	log.Printf("CONN_STR: %s", CONN_STR)
