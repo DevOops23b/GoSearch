@@ -20,6 +20,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+
 func hashPassword(password string) (string, error) {
 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
