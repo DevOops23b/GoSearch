@@ -104,32 +104,29 @@ func checkTables() {
 
 func startCronScheduler() {
     c := cron.New()
-    
     // Schedule the checkTables function to run every minute
-    _, err := c.AddFunc("*/1 * * * *", func() {
+    if _, err := c.AddFunc("*/1 * * * *", func() {
         fmt.Println("Cron job: Running checkTables at", time.Now())
         checkTables()
-    })
-    if err != nil {
+    }); err != nil {
         log.Fatalf("Error scheduling cron job: %v", err)
     }
-
-	if _, err := c.AddFunc("0 2 * * *", func() {
-		log.Println("Cron job: Running database backup at", time.Now())
-		backupDatabase()
-		cleanupOldBackups()
-	}); err != nil {
-		log.Fatalf("Error scheduling backupDatabase cron job: %v", err)
-	}
+    
+    if _, err := c.AddFunc("0 2 * * *", func() {
+        log.Println("Cron job: Running database backup at", time.Now())
+        backupDatabase()
+        cleanupOldBackups()
+    }); err != nil {
+        log.Fatalf("Error scheduling backupDatabase cron job: %v", err)
+    }
     
     // scraping wikipedia every 5. minutes
-    c.AddFunc("*/5 * * * *", func() {
+    if _, err := c.AddFunc("*/5 * * * *", func() {
         fmt.Println("Cron job: Running Wikipedia scraper at", time.Now())
         logPath := os.Getenv("SEARCH_LOG_PATH")
         if logPath == "" {
             logPath = "search.log"
         }
-        
         // Track the number of pages before scraping
         var countBefore int
         err := db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&countBefore)
@@ -159,7 +156,9 @@ func startCronScheduler() {
         } else {
             log.Println("No new pages added. Skipping Elasticsearch sync.")
         }
-    })
+    }); err != nil {
+        log.Fatalf("Error scheduling Wikipedia scraper cron job: %v", err)
+    }
     
     c.Start()
 }

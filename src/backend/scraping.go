@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/gocolly/colly"
+	"golang.org/x/text/cases"
+    "golang.org/x/text/language"
 )
 
 func extractSearchTerms(logPath string) []string {
@@ -102,7 +104,8 @@ func tryScrapeInLanguages(term string, langs []string) (Page, string, error) {
 
 func buildWikipediaURL(term, lang string) string {
 	term = strings.ReplaceAll(term, " ", "_")
-	return fmt.Sprintf("https://%s.wikipedia.org/wiki/%s", lang, strings.Title(term))
+	c := cases.Title(language.Und)
+    return fmt.Sprintf("https://%s.wikipedia.org/wiki/%s", lang, c.String(term))
 }
 
 func scrapeWikipedia(url string, lang string) (Page, error) {
