@@ -6,8 +6,6 @@ services:
     image: ghcr.io/devoops23b/gosearch:latest
     container_name: go-app
     volumes:
-      - ./src/backend:/app/src/backend
-      - ./src/frontend:/app/src/frontend
       - ./src/whoknows.db:/app/src/whoknows.db
     ports:
       - "8081:8080"
