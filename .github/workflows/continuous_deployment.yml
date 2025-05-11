@@ -28,6 +28,15 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
+        with:
+          images: ghcr.io/devoops23b/gosearch
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short    
       
       - name: Build and push Docker image
         uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4
@@ -91,13 +100,6 @@ jobs:
             fi
             EOF
 
-        - name: Stop and remove existing container
-          run: |
-            ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            docker stop go-app 2>/dev/null || true
-            docker rm go-app 2>/dev/null || true
-            EOF
-
         - name: Add user to Docker group
           run: |
             ssh -i ~/.ssh/ssh_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
@@ -110,7 +112,22 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             mkdir -p ~/GoSearch
             cd ~/GoSearch
-            docker-compose -f docker-compose.dev.yml up -d --pull always --force-recreate
+            
+            # Force pull the latest image
+            docker-compose -f docker-compose.dev.yml pull
+            
+            # Stop and remove existing container
+            docker-compose -f docker-compose.dev.yml down
+            
+            # Remove existing container and volume data to ensure fresh deployment
+            docker rm -f go-app 2>/dev/null || true
+            
+            # Start with new image, forcing recreation
+            docker-compose -f docker-compose.dev.yml up -d --force-recreate --build
+            
+            # Verify deployment
+            docker ps | grep go-app
+            echo "Deployment completed"
             EOF
 
         - name: Clean up Docker resources
