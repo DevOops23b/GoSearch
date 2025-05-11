@@ -1,6 +1,26 @@
-SEARCH: 2025/04/27 11:04:49 query="golang" from=[::1]:50021
-SEARCH: 2025/04/27 11:06:40 query="4" from=[::1]:50021
-SEARCH: 2025/04/27 11:07:02 query="database" from=[::1]:50021
-SEARCH: 2025/04/27 11:10:18 query="tlou" from=[::1]:50021
-SEARCH: 2025/04/27 11:10:27 query="devops" from=[::1]:50021
-SEARCH: 2025/04/28 20:33:34 query="python" from=172.19.0.1:48652
+SEARCH: 2025/05/08 12:23:04 query="sap" from=192.168.65.1:53832
+SEARCH: 2025/05/08 12:23:17 query="blomst" from=192.168.65.1:53832
+SEARCH: 2025/05/08 12:23:36 query="flower" from=192.168.65.1:53832
+SEARCH: 2025/05/08 12:23:55 query="colorblind" from=192.168.65.1:53832
+SEARCH: 2025/05/08 12:26:13 query="colorblind" from=192.168.65.1:54129
+SEARCH: 2025/05/08 12:27:18 query="flower" from=192.168.65.1:54129
+SEARCH: 2025/05/08 12:30:55 query="Colorblind" from=192.168.65.1:54586
+SEARCH: 2025/05/08 12:31:24 query="Colorblind" from=192.168.65.1:54586
+SEARCH: 2025/05/08 12:32:22 query="colorblind" from=192.168.65.1:54586
+SEARCH: 2025/05/08 12:33:02 query="colorblind" from=192.168.65.1:54586
+SEARCH: 2025/05/08 12:33:26 query="colorblind" from=192.168.65.1:54586
+SEARCH: 2025/05/03 21:16:19 query="docker" from=[::1]:62435
+SEARCH: 2025/05/03 21:20:19 query="k8s" from=[::1]:62778
+SEARCH: 2025/05/08 15:53:56 query="blomster" from=192.168.65.1:23331
+SEARCH: 2025/05/08 15:56:53 query="rust" from=192.168.65.1:23840
+SEARCH: 2025/05/08 16:20:07 query="darwin" from=192.168.65.1:26077
+SEARCH: 2025/05/08 16:20:33 query="darwin teory" from=192.168.65.1:26077
+SEARCH: 2025/05/08 16:20:55 query="kommunisme" from=192.168.65.1:26077
+SEARCH: 2025/05/08 16:58:07 query="kommunisme" from=192.168.65.1:29746
+SEARCH: 2025/05/08 16:58:30 query="darwin" from=192.168.65.1:29746
+SEARCH: 2025/05/08 16:58:39 query="darwin teory" from=192.168.65.1:29746
+SEARCH: 2025/05/08 16:58:55 query="charlies darwing" from=192.168.65.1:29746
+SEARCH: 2025/05/08 16:59:04 query="kommunisme" from=192.168.65.1:29746
+SEARCH: 2025/05/11 11:51:23 query="blomster" from=192.168.65.1:51286
+SEARCH: 2025/05/11 11:52:02 query="SAP" from=192.168.65.1:51286
+SEARCH: 2025/05/11 11:54:08 query="blomst" from=192.168.65.1:51286

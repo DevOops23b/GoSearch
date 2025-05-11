@@ -3,12 +3,13 @@
     <head>
         <title> {{ .Title }} </title>
         <link rel="stylesheet" href="../static/style.css">
+        <link rel="stylesheet" href="../static/register.css">
     </head>
 
     <body>
 
         <nav class="navigation">
-            <h1><a id="nav-logo" href="/">¿Who Knows?</a></h1>
+            <h1><a id="nav-logo" href="/">Go Search!</a></h1>
             {{ if .UserLoggedIn }}
                 <a id="nav-logout" href="/api/logout">Log out</a>
             {{ else }}
@@ -21,7 +22,7 @@
         </main>
 
         <footer>
-            <span>¿Who Knows? &copy; 2025</span>
+            <span>Go Search! &copy; 2025</span>
             <a href="/about">About</a>
         </footer>
 

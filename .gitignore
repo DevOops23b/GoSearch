@@ -6,6 +6,7 @@
 *.so
 *.dylib
 *.db
+.DS_Store
 # Test binary, built with `go test -c`
 *.test
 
@@ -34,3 +35,7 @@ node_modules/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+#backup
+/src/backend/backups/
+
