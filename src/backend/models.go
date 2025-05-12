@@ -21,11 +21,11 @@ type PageData struct {
 }
 
 type Page struct {
-    Title       string    `json:"title"`
-    URL         string    `json:"url"`
-    Content     string    `json:"content"`
-    Language    string    `json:"language"`
-    LastUpdated time.Time `json:"last_updated"`
+	Title       string    `json:"title"`
+	URL         string    `json:"url"`
+	Content     string    `json:"content"`
+	Language    string    `json:"language"`
+	LastUpdated time.Time `json:"last_updated"`
 }
 
 type WeatherResponse struct {
