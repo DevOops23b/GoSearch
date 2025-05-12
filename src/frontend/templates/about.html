@@ -1,39 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About - ¿Who Knows?</title>
-    <link rel="stylesheet" type="text/css" href="static/style.css">
+{{ define "content" }}
+    <div class="body">
+        <h1>Our mission</h1>
+        <p>We intend to build the world's best search engine!</p>
 
-</head>
-<body>
-    <div class="page">
-        <nav class="navigation">
-            <h1><a id="nav-logo" href="/">¿Who Knows?</a></h1>
-            {{ if .UserLoggedIn }}
-                <a id="nav-logout" href="/api/logout">Log out</a>
-            {{ else }}
-                <a id="nav-login" href="/login">Log in</a>
-                <a id="nav-register" href="/register">Register</a>
-            {{ end }}
-        </nav>
-
-        <main>
-            <div class="body">
-                <h1>Our mission</h1>
-                <p>We intend to build the world's best search engine!</p>
-
-                <h2>Our team</h2>
-                <img src="static/monkgroup.png" alt="monk group our team" style="max-width: 100%; height: auto;">
-            </div>
-        </main>
-
-        <footer>
-            <span>¿Who Knows? &copy; 2025</span>
-            <a href="/about">About</a>
-        </footer>
+        <h2>Our team</h2>
+        <img src="static/monkgroup.png" alt="monk group our team" style="max-width: 100%; height: auto;">
     </div>
-</body>
-
-</html>
+{{ end }}

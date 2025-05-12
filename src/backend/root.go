@@ -16,7 +16,8 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 		"UserLoggedIn": ok && userID != nil,
 	}
 
-	tmpl, err := template.ParseFiles(templatePath + "index.html")
+	tmpl, err := template.ParseFiles(templatePath+"layout.html", templatePath+"index.html")
+	tmpl.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		http.Error(w, "Error loading index-side", http.StatusInternalServerError)
 		return
@@ -35,7 +36,7 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 		"UserLoggedIn": ok && userID != nil,
 	}
 
-	tmpl, err := template.ParseFiles(templatePath + "about.html")
+	tmpl, err := template.ParseFiles(templatePath+"about.html", templatePath+"layout.html")
 	if err != nil {
 		http.Error(w, "Error loading about-side", http.StatusInternalServerError)
 		return

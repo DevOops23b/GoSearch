@@ -42,7 +42,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	tmpl, err := template.ParseFiles(templatePath + "search.html")
+	tmpl, err := template.ParseFiles(templatePath+"layout.html", templatePath+"search.html")
+	tmpl.ExecuteTemplate(w, "layout", searchResults)
 	if err != nil {
 		http.Error(w, "Error loading search template", http.StatusInternalServerError)
 		return
@@ -122,38 +123,38 @@ func searchPagesInEs(query string) ([]Page, error) {
 }
 
 func syncPagesToElasticsearch() error {
-    // Først, slet indekset hvis det eksisterer
-    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    existsRes, err := esClient.Indices.Exists(
-        []string{"pages"},
-        esClient.Indices.Exists.WithContext(ctx),
-    )
-    cancel()
-    
-    if err != nil {
-        return fmt.Errorf("error checking if index exists: %w", err)
-    }
-    
-    if existsRes.StatusCode == 200 {
-        log.Println("Indeks 'pages' eksisterer allerede - sletter og genopbygger")
-        ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-        deleteRes, err := esClient.Indices.Delete(
-            []string{"pages"},
-            esClient.Indices.Delete.WithContext(ctx),
-        )
-        cancel()
-        
-        if err != nil {
-            return fmt.Errorf("error deleting index: %w", err)
-        }
-        
-        if deleteRes.IsError() {
-            return fmt.Errorf("error response when deleting index: %s", deleteRes.String())
-        }
-    }
-    
-    // Opret indekset med korrekte mappings
-    mappings := `{
+	// Først, slet indekset hvis det eksisterer
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	existsRes, err := esClient.Indices.Exists(
+		[]string{"pages"},
+		esClient.Indices.Exists.WithContext(ctx),
+	)
+	cancel()
+
+	if err != nil {
+		return fmt.Errorf("error checking if index exists: %w", err)
+	}
+
+	if existsRes.StatusCode == 200 {
+		log.Println("Indeks 'pages' eksisterer allerede - sletter og genopbygger")
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		deleteRes, err := esClient.Indices.Delete(
+			[]string{"pages"},
+			esClient.Indices.Delete.WithContext(ctx),
+		)
+		cancel()
+
+		if err != nil {
+			return fmt.Errorf("error deleting index: %w", err)
+		}
+
+		if deleteRes.IsError() {
+			return fmt.Errorf("error response when deleting index: %s", deleteRes.String())
+		}
+	}
+
+	// Opret indekset med korrekte mappings
+	mappings := `{
         "mappings": {
             "properties": {
                 "title": { "type": "text" },
@@ -164,77 +165,77 @@ func syncPagesToElasticsearch() error {
             }
         }
     }`
-    
-    ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-    createRes, err := esClient.Indices.Create(
-        "pages",
-        esClient.Indices.Create.WithBody(strings.NewReader(mappings)),
-        esClient.Indices.Create.WithContext(ctx),
-    )
-    cancel()
-    
-    if err != nil {
-        return fmt.Errorf("error creating index: %w", err)
-    }
-    
-    if createRes.IsError() {
-        return fmt.Errorf("error response when creating index: %s", createRes.String())
-    }
-    
-    // Hent og indekser alle sider fra databasen
-    rows, err := db.Query("SELECT title, url, content FROM pages")
-    if err != nil {
-        return fmt.Errorf("error querying pages from DB: %w", err)
-    }
-    defer rows.Close()
-    
-    count := 0
-    for rows.Next() {
-        var title, url, content string
-        if err := rows.Scan(&title, &url, &content); err != nil {
-            log.Printf("Error scanning row: %v", err)
-            continue
-        }
-        
-        // Opret dokument med de rigtige feltnavne
-        docMap := map[string]interface{}{
-            "title":        title,
-            "url":          url,
-            "content":      content,
-            "language":     "",
-            "last_updated": time.Now().Format(time.RFC3339),
-        }
-        
-        doc, err := json.Marshal(docMap)
-        if err != nil {
-            log.Printf("Error marshaling page: %v", err)
-            continue
-        }
-        
-        // Indekser dokumentet med eget generert id.
-        ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-        indexRes, err := esClient.Index(
-            "pages",
-            strings.NewReader(string(doc)),
-            esClient.Index.WithRefresh("true"),
-            esClient.Index.WithContext(ctx),
-        )
-        cancel()
-        
-        if err != nil {
-            log.Printf("Error indexing %s: %v", url, err)
-            continue
-        }
-        
-        if indexRes.IsError() {
-            log.Printf("Error response when indexing %s: %s", url, indexRes.String())
-            continue
-        }
-        
-        log.Printf("Indexed page: %s", url)
-        count++
-    }
-    
-    log.Printf("Synced %d pages to Elasticsearch", count)
-    return nil
+
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	createRes, err := esClient.Indices.Create(
+		"pages",
+		esClient.Indices.Create.WithBody(strings.NewReader(mappings)),
+		esClient.Indices.Create.WithContext(ctx),
+	)
+	cancel()
+
+	if err != nil {
+		return fmt.Errorf("error creating index: %w", err)
+	}
+
+	if createRes.IsError() {
+		return fmt.Errorf("error response when creating index: %s", createRes.String())
+	}
+
+	// Hent og indekser alle sider fra databasen
+	rows, err := db.Query("SELECT title, url, content FROM pages")
+	if err != nil {
+		return fmt.Errorf("error querying pages from DB: %w", err)
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		var title, url, content string
+		if err := rows.Scan(&title, &url, &content); err != nil {
+			log.Printf("Error scanning row: %v", err)
+			continue
+		}
+
+		// Opret dokument med de rigtige feltnavne
+		docMap := map[string]interface{}{
+			"title":        title,
+			"url":          url,
+			"content":      content,
+			"language":     "",
+			"last_updated": time.Now().Format(time.RFC3339),
+		}
+
+		doc, err := json.Marshal(docMap)
+		if err != nil {
+			log.Printf("Error marshaling page: %v", err)
+			continue
+		}
+
+		// Indekser dokumentet med eget generert id.
+		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+		indexRes, err := esClient.Index(
+			"pages",
+			strings.NewReader(string(doc)),
+			esClient.Index.WithRefresh("true"),
+			esClient.Index.WithContext(ctx),
+		)
+		cancel()
+
+		if err != nil {
+			log.Printf("Error indexing %s: %v", url, err)
+			continue
+		}
+
+		if indexRes.IsError() {
+			log.Printf("Error response when indexing %s: %s", url, indexRes.String())
+			continue
+		}
+
+		log.Printf("Indexed page: %s", url)
+		count++
+	}
+
+	log.Printf("Synced %d pages to Elasticsearch", count)
+	return nil
 }

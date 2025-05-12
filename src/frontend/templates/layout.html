@@ -1,30 +1,40 @@
 <!DOCTYPE html>
 <html lang="eng">
     <head>
-        <title> {{ .Title }} </title>
-        <link rel="stylesheet" href="../static/style.css">
-        <link rel="stylesheet" href="../static/register.css">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ .Title }} - ¿Go Search?</title>
+        <link rel="stylesheet" href="/static/style.css">
+        <link rel="stylesheet" href="/static/register.css">
     </head>
 
-    <body>
-
-        <nav class="navigation">
-            <h1><a id="nav-logo" href="/">Go Search!</a></h1>
+<body>
+    <div class="page">
+        <nav class="navigation" role="navigation" aria-label="Main navigation">
+            <div class="nav-title">
+                <h1><a id="nav-logo" href="/">Go Search!</a></h1>
+            </div>
+            <div class="nav-buttons">
             {{ if .UserLoggedIn }}
-                <a id="nav-logout" href="/api/logout">Log out</a>
+                <a id="nav-logout" href="/api/logout" class="home-button">Log out</a>
+                <a id="nav-logout" href="/" class="home-button">Home</a>
             {{ else }}
-                <a id="nav-login" href="/login">Log in</a>
-                <a id="nav-register" href="/register">Register</a>
+                <a id="nav-login" href="/login" class="home-button">Log in</a>
+                <a id="nav-register" href="/register" class="home-button">Register</a>
+                <a id="nav-login" href="/" class="home-button">Home</a>
             {{ end }}
+            </div>
         </nav>
-        <main>
+
+        <main role="main">
             {{ template "content" . }}
         </main>
 
-        <footer>
+        <footer role="contentinfo">
             <span>Go Search! &copy; 2025</span>
             <a href="/about">About</a>
         </footer>
+    </div>
 
-    </body>
+</body>
 </html>

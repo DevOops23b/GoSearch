@@ -1,19 +1,69 @@
+/* Form Group Styling */
 .form-group {
     display: flex;
-    align-items: center; /* Vertikal centering */
-    margin-bottom: 10px; /* Afstand mellem grupperne */
+    flex-direction: column;
+    margin-bottom: 20px;
 }
 
 .form-group label {
-    width: 5%; /* Juster denne værdi efter behov */
-    margin-right: 3px; /* Afstand mellem label og input */
+    margin-bottom: 8px;
+    color: #555;
+    font-weight: 600;
+    display: block;
 }
 
 .form-group input {
-    flex-grow: 1; /* Input tager den resterende plads */
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-button {
-    display: block;
-    margin: 20px auto;
+.form-group input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.form-actions button {
+    align-self: flex-start;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 600px) {
+    .form-group {
+        width: 100%;
+    }
+}
+
+/* Additional form-specific styles */
+small {
+    color: #777;
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+/* Password Confirmation Error Styles */
+.password-error {
+    color: #e74c3c;
+    font-size: 0.9rem;
+    margin-top: 5px;
+    display: none;
+}
+
+/* Ensure proper spacing and alignment */
+form {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
 }
