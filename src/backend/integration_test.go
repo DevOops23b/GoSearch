@@ -133,8 +133,9 @@ func TestIntegration(t *testing.T) {
 					t.Errorf("Root expected 200 OK, got %d", resp.StatusCode)
 				}
 				// index.html displays site title
-				if !strings.Contains(body, "¿Who Knows?") {
-					t.Errorf("Root expected site title in body, got %s", body)
+				expectedTitle := "Home - ¿Go Search?"
+				if !strings.Contains(body, expectedTitle) {
+					t.Errorf("Root expected site title '%s' in body, got %s", expectedTitle, body)
 				}
 			},
 		},
