@@ -138,7 +138,7 @@ func syncPagesToElasticsearch() error {
 	}
 
 	if existsRes.StatusCode == 200 {
-		log.Println("Indeks 'pages' eksisterer allerede - sletter og genopbygger")
+		log.Println("Index 'pages' already exists - removing and rebuilding")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		deleteRes, err := esClient.Indices.Delete(
 			[]string{"pages"},

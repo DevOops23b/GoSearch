@@ -74,10 +74,14 @@ nav {
     background-color: var(--primary-color);
     padding: 15px 30px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     position: relative;
+}
+
+#nav-home {
+    margin-right: auto;
 }
 
 .nav-title {
@@ -88,7 +92,6 @@ nav {
 
 .nav-buttons {
     display: flex;
-    align-items: right;
     gap: 10px;
 }
 
@@ -109,7 +112,9 @@ nav h1 a:hover {
 
 #nav-login,
 #nav-register,
-#nav-logout {
+#nav-logout,
+#nav-home
+ {
     float: right;
 }
 
@@ -128,7 +133,7 @@ input {
     margin-top: 1em;
 }
 
-.home-button, #nav-login, #nav-register, #nav-logout {
+.home-button, #nav-login, #nav-register, #nav-logout, #nav-home {
     color: white;
     text-decoration: none;
     padding: 8px 15px;
@@ -141,7 +146,8 @@ input {
 .home-button:hover, 
 #nav-login:hover, 
 #nav-register:hover, 
-#nav-logout:hover {
+#nav-logout:hover,
+#nav-home:hover {
     background-color: rgba(255, 255, 255, 0.3);
 }
 
@@ -211,7 +217,7 @@ footer {
         align-items: center;
     }
 
-    .home-button, #nav-login, #nav-register, #nav-logout {
+    .home-button, #nav-login, #nav-register, #nav-logout, #nav-home {
         margin: 5px 0;
     }
 
@@ -253,4 +259,28 @@ footer {
     color: #666;
     margin-top: 5px;
     overflow-wrap: break-word;
+}
+
+.input-button-group {
+    display: flex;
+    align-items: center;
+    gap: 16px; 
+    width: 100%;
+}
+
+.input-button-group input {
+    flex: 1; 
+    margin: 0; 
+}
+
+.input-button-group button {
+    white-space: nowrap;
+    margin: 0; 
+}
+
+.search label,
+.weather label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 500;
 }

@@ -11,17 +11,17 @@
 <body>
     <div class="page">
         <nav class="navigation" role="navigation" aria-label="Main navigation">
+            <a id="nav-home" href="/" class="home-button">Home</a>
+
             <div class="nav-title">
                 <h1><a id="nav-logo" href="/">Go Search!</a></h1>
             </div>
             <div class="nav-buttons">
             {{ if .UserLoggedIn }}
                 <a id="nav-logout" href="/api/logout" class="home-button">Log out</a>
-                <a id="nav-logout" href="/" class="home-button">Home</a>
             {{ else }}
                 <a id="nav-login" href="/login" class="home-button">Log in</a>
                 <a id="nav-register" href="/register" class="home-button">Register</a>
-                <a id="nav-login" href="/" class="home-button">Home</a>
             {{ end }}
             </div>
         </nav>

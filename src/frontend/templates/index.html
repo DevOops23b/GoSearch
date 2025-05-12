@@ -3,16 +3,20 @@
         <div class="search">
             <form action="/api/search" method="GET">
                 <label for="search-input">Search</label>
-                <input type="text" id="search-input" name="q" placeholder="Search..." value="{{.Query}}">
-                <button type="submit">Search</button>
+                <div class="input-button-group">
+                    <input type="text" id="search-input" name="q" placeholder="Search..." value="{{.Query}}">
+                    <button type="submit">Search</button>
+                </div>
             </form>
         </div>
 
         <div class="weather">
             <form action="/api/weather" method="GET">
                 <label for="city-input">City</label>
-                <input type="text" id="city-input" placeholder="City..." required>
-                <button type="submit">Check</button>
+                <div class="input-button-group">
+                    <input type="text" id="city-input" placeholder="City..." required>
+                    <button type="submit">Check</button>
+                </div>
             </form>
         </div>
     </div>
