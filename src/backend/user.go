@@ -30,12 +30,13 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := PageData{
-		Title:    "Log in",
-		Template: "login",
+		Title:        "Log in",
+		Template:     "login",
+		UserLoggedIn: userIsLoggedIn(r),
 	}
 
-	err = tmpl.ExecuteTemplate(w, "layout.html", data)
-	if err != nil {
+	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 
@@ -75,9 +76,10 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	err = r.ParseForm()
 	if err != nil {
 		data := PageData{
-			Title:    "Log in",
-			Template: "login.html",
-			Error:    "Invalid username or password",
+			Title:        "Log in",
+			Template:     "login.html",
+			Error:        "Invalid username or password",
+			UserLoggedIn: false,
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
@@ -94,15 +96,15 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	if username == "" || password == "" {
 
 		data := PageData{
-			Title:    "Log in",
-			Template: "login.html",
-			Error:    "Username and password cannot be empty",
+			Title:        "Log in",
+			Template:     "login.html",
+			Error:        "Username and password cannot be empty",
+			UserLoggedIn: false,
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		err := tmpl.ExecuteTemplate(w, "layout.html", data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Template execution error: %v", err)
+			http.Error(w, "Failed to render error page", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -115,9 +117,10 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	// If the username is not found in th db or password is incorrect
 	if err != nil {
 		data := PageData{
-			Title:    "Log in",
-			Template: "login.html",
-			Error:    "Incorrect username or password",
+			Title:        "Log in",
+			Template:     "login.html",
+			Error:        "Incorrect username or password",
+			UserLoggedIn: false,
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
@@ -129,9 +132,10 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 
 	if !validatePassword(user.Password, password) {
 		data := PageData{
-			Title:    "Log in",
-			Template: "login.html",
-			Error:    "Incorrect username or password",
+			Title:        "Log in",
+			Template:     "login.html",
+			Error:        "Incorrect username or password",
+			UserLoggedIn: false,
 		}
 
 		w.WriteHeader(http.StatusInternalServerError)
@@ -145,15 +149,15 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session-name")
 	if err != nil {
 		data := PageData{
-			Title:    "Log in",
-			Template: "login.html",
-			Error:    "Session error",
+			Title:        "Log in",
+			Template:     "login.html",
+			Error:        "Session error",
+			UserLoggedIn: false,
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		err := tmpl.ExecuteTemplate(w, "layout.html", data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Template execution error: %v", err)
+			http.Error(w, "Failed to render error page", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -161,15 +165,15 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	session.Values["user_id"] = user.ID
 	if err := session.Save(r, w); err != nil {
 		data := PageData{
-			Title:    "Log in",
-			Template: "login.html",
-			Error:    "Session save error",
+			Title:        "Log in",
+			Template:     "login.html",
+			Error:        "Session save error",
+			UserLoggedIn: false,
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		err := tmpl.ExecuteTemplate(w, "layout.html", data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Template execution error: %v", err)
+			http.Error(w, "Failed to render error page", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -186,13 +190,21 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
-	tmpl, err := template.ParseFiles(templatePath + "register.html")
+
+	tmpl, err := template.ParseFiles(templatePath+"layout.html", templatePath+"register.html")
 	if err != nil {
 		http.Error(w, "Error loading register page", http.StatusInternalServerError)
 		return
 	}
 
-	if err := tmpl.Execute(w, nil); err != nil {
+	data := PageData{
+		Title:        "Register",
+		Error:        "",
+		UserLoggedIn: false,
+		Template:     "register.html",
+	}
+
+	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
 		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}

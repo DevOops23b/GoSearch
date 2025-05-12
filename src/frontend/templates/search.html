@@ -1,43 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search Results</title>
-    <link rel="stylesheet" type="text/css" href="/static/style.css">
-</head>
-<body>
-    <div class="page">
-        <nav class="navigation">
-            {{ if .UserLoggedIn }}
-                <a id="nav-logout" href="/api/logout">Log out</a>
-            {{ else }}
-                <a id="nav-login" href="/login">Log in</a>
-                <a id="nav-register" href="/register">Register</a>
-            {{ end }}
-        </nav>
+{{ define "content" }}
+    <h2>Search Results for "{{ .Query }}"</h2>
 
-        <main> 
-            <h2>Search Results for "{{ .Query }}"</h2>
-    
-            {{ if not .Results }}
-                <p>No results found.</p>
-            {{ else }}
-                <div id="Results">
-                    {{ range .Results }}
-                        <div>
-                            <h2><a href="{{ .url }}" class="search-result-title">{{ .title }}</a></h2>
-                            <p class="search-result-description">{{ .description }}</p>
-                        </div>
-                    {{ end }}
+    {{ if not .Results }}
+        <p>No results found.</p>
+    {{ else }}
+        <div id="Results">
+            {{ range .Results }}
+                <div>
+                    <h2><a href="{{ .url }}" class="search-result-title">{{ .title }}</a></h2>
+                    <p class="search-result-description">{{ .description }}</p>
                 </div>
             {{ end }}
-        </main> 
-
-        <footer>
-            <span>¿Who Knows? &copy; 2025</span>
-            <a href="/about">About</a>
-        </footer>
-    </div>
-</body>
-</html>
+        </div>
+    {{ end }}
+{{ end }}

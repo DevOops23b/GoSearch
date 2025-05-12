@@ -1,87 +1,120 @@
 /* Website Defaults */
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2ecc71;
+    --text-color: #333;
+    --background-color: #f4f6f7;
+    --accent-color: #e74c3c;
+    --hover-color: #2980b9;
+}
+
+/* Reset and Base Styles */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
 html,
 body {
     height: 100%;
     /* Sørger for at tage hele skærmhøjden */
     margin: 0;
-    padding: 0 20px;
-    font-family: 'Trebuchet MS', sans-serif;
+    font-family: 'Inter', 'Trebuchet MS', sans-serif;
     font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: var(--background-color);
     display: flex;
     flex-direction: column;
-    color: #222222;
+}
+
+.body, .container {
+    padding: 30px;
+    width: 100%;
+    margin: 0 auto;
 }
 
 main {
     flex-grow: 1;
     /* Skubber footeren til bunden */
+    padding: 20px;
 }
 
 .page {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    /* Minimum højde = hele viewportens højde */
-}
-
-/*div.page div.body {
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-}*/
-
-
-/*div.page div.footer {
-    background: #eee;
-    color: #888;
-    padding: 5px 10px;
-    text-align: center;
-    font-size: 12px;
-    margin-top: auto;
     width: 100%;
-}*/
-
-
-ul.flashes {
-    list-style: none;
-    margin: 10px 10px 0 10px;
-    padding: 0;
+    margin: 0 auto;
+    background-color: white;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
 }
 
-ul.flashes li {
-    background: #B9F3ED;
-    border: 1px solid #81CEC6;
-    -moz-border-radius: 2px;
-    -webkit-border-radius: 2px;
-    padding: 4px;
-    font-size: 13px;
+ul.flashes, .error {
+    background-color: #e8f5e9;
+    border: 1px solid var(--secondary-color);
+    color: #2c3e50;
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin: 15px 0;
 }
 
-div.error {
-    margin: 10px 0;
-    background: #FAE4E4;
-    border: 1px solid #DD6F6F;
-    -moz-border-radius: 2px;
-    -webkit-border-radius: 2px;
-    padding: 4px;
-    font-size: 13px;
+.error {
+    background-color: #ffebee;
+    border-color: var(--accent-color);
+    color: var(--accent-color);
 }
+
 
 /* Custom Styles */
 nav {
-    white-space: nowrap;
-    text-align: center;
+    background-color: var(--primary-color);
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+#nav-home {
+    margin-right: auto;
+}
+
+.nav-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.nav-buttons {
+    display: flex;
+    gap: 10px;
 }
 
 nav h1,
 nav a {
     display: inline-block;
     margin-right: 20px;
+    color: white;
+    text-decoration: none;
+    font-size: 1.5rem;
+    font-weight: bold;
+    transition: opacity 0.3s;
+}
+
+nav h1 a:hover {
+    opacity: 0.8;
 }
 
 #nav-login,
 #nav-register,
-#nav-logout {
+#nav-logout,
+#nav-home
+ {
     float: right;
 }
 
@@ -100,47 +133,154 @@ input {
     margin-top: 1em;
 }
 
-button,
-.home-button {
-    width: 10%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #e0e0e0;
-    color: #222222;
-    cursor: pointer;
-    margin-left: 10px;
+.home-button, #nav-login, #nav-register, #nav-logout, #nav-home {
+    color: white;
+    text-decoration: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.2);
     transition: background-color 0.3s;
+    margin-left: 10px;
 }
 
-.home-button {
-    display: inline-block;
-
-    width: auto;
-
-}
-
-button:hover,
-.home-button:hover {
-    background-color: #c0c0c0;
-}
-
-button:active,
-.home-button:active {
-    /*background-color: #f0f0f0;*/
-    box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
-}
-
-a {
-    color: #1a0dab;
+.home-button:hover, 
+#nav-login:hover, 
+#nav-register:hover, 
+#nav-logout:hover,
+#nav-home:hover {
+    background-color: rgba(255, 255, 255, 0.3);
 }
 
 
-footer {
-    background: #f7f7f7;
-    color: #333333;
-    padding: 10px;
-    text-align: center;
-    font-size: 15px;
+input {
     width: 100%;
+    padding: 12px 15px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+button, .home-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s, transform 0.1s;
+    margin: 10px 0;
+}
+
+button:hover, .home-button:hover {
+    background-color: var(--hover-color);
+}
+
+button:active, .home-button:active {
+    transform: scale(0.98);
+}
+
+/* Links */
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+a:hover {
+    color: var(--hover-color);
+    text-decoration: underline;
+}
+
+/* Footer */
+footer {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    text-align: center;
+    padding: 15px;
+    margin-top: auto;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    nav {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .home-button, #nav-login, #nav-register, #nav-logout, #nav-home {
+        margin: 5px 0;
+    }
+
+    input, button {
+        width: 100%;
+    }
+}
+
+/* Search and Weather Containers */
+.search, .weather {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+/* Search Results */
+#Results {
+    width: 100%;
+}
+
+#Results div {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 6px;
+    word-wrap: break-word;
+}
+
+.search-result-title {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+    overflow-wrap: break-word;
+}
+
+.search-result-description {
+    color: #666;
+    margin-top: 5px;
+    overflow-wrap: break-word;
+}
+
+.input-button-group {
+    display: flex;
+    align-items: center;
+    gap: 16px; 
+    width: 100%;
+}
+
+.input-button-group input {
+    flex: 1; 
+    margin: 0; 
+}
+
+.input-button-group button {
+    white-space: nowrap;
+    margin: 0; 
+}
+
+.search label,
+.weather label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 500;
 }
