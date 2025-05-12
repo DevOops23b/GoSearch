@@ -43,18 +43,20 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl, err := template.ParseFiles(templatePath+"layout.html", templatePath+"search.html")
-	tmpl.ExecuteTemplate(w, "layout", searchResults)
 	if err != nil {
+		log.Printf("Error parsing search templates: %v", err)
 		http.Error(w, "Error loading search template", http.StatusInternalServerError)
 		return
 	}
 
-	if err := tmpl.Execute(w, map[string]interface{}{
+	data := map[string]interface{}{
 		"Query":   queryParam,
 		"Results": searchResults,
-	}); err != nil {
+	}
+
+	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
 		log.Printf("Error executing search template: %v", err)
-		http.Error(w, "Error rengering search results", http.StatusInternalServerError)
+		http.Error(w, "Error rendering search results", http.StatusInternalServerError)
 	}
 }
 

@@ -35,8 +35,8 @@ func login(w http.ResponseWriter, r *http.Request) {
 		UserLoggedIn: userIsLoggedIn(r),
 	}
 
-	err = tmpl.ExecuteTemplate(w, "layout.html", data)
-	if err != nil {
+	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 
@@ -102,10 +102,9 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			UserLoggedIn: false,
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		err := tmpl.ExecuteTemplate(w, "layout.html", data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Template execution error: %v", err)
+			http.Error(w, "Failed to render error page", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -156,10 +155,9 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			UserLoggedIn: false,
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		err := tmpl.ExecuteTemplate(w, "layout.html", data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Template execution error: %v", err)
+			http.Error(w, "Failed to render error page", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -173,10 +171,9 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			UserLoggedIn: false,
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		err := tmpl.ExecuteTemplate(w, "layout.html", data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
+			log.Printf("Template execution error: %v", err)
+			http.Error(w, "Failed to render error page", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -207,8 +204,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		Template:     "register.html",
 	}
 
-	err = tmpl.ExecuteTemplate(w, "layout.html", data)
-	if err != nil {
+	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
 		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}

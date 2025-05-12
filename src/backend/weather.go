@@ -35,8 +35,7 @@ func weatherHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tmpl.ExecuteTemplate(w, "layout.html", data)
-	if err != nil {
+	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
 		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}

@@ -1,13 +1,12 @@
 {{ define "content" }}
 
-    <h2>Log in</h2>
-
     {{ if .Error }}
     <div class="error"><strong>Error: </strong> {{ .Error }} </div>
     {{ end }}
 
     <form action="/api/login" method="POST">
         <div>
+            <h2>Log in</h2>
             <div>
                 <label for="username">Username</label>
             </div>  

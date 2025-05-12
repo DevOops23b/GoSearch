@@ -17,12 +17,13 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl, err := template.ParseFiles(templatePath+"layout.html", templatePath+"index.html")
-	tmpl.ExecuteTemplate(w, "layout", data)
 	if err != nil {
-		http.Error(w, "Error loading index-side", http.StatusInternalServerError)
+		log.Printf("Error parsing templates: %v", err)
+		http.Error(w, "Error loading templates", http.StatusInternalServerError)
 		return
 	}
-	if err := tmpl.Execute(w, data); err != nil {
+
+	if err := tmpl.ExecuteTemplate(w, "layout.html", data); err != nil {
 		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Error rendering page", http.StatusInternalServerError)
 	}
