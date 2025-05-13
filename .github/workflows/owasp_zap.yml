@@ -71,13 +71,14 @@ jobs:
 
       - name: Run the application
         run: |
-          go run ./src/backend/ . &
+          cd ./src/backend
+          nohup go run . > app.log 2>&1 &
           for i in {1..10}; do
             if curl -s http://localhost:8080 >/dev/null; then
               echo "App is running!"
               break
             else
-              echo "Waitin for app to start..."
+              echo "Waiting for app to start..."
               sleep 5
             fi
           done    
