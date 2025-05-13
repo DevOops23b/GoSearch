@@ -26,7 +26,7 @@ services:
     mem_limit: 256m
 
   postgres:
-    image: postgres:13
+    image: postgres@sha256:f89a36ed5069cee5125bb9ddec623f26989792560eae9a06f767c87ba117cb6d
     container_name: postgres-db
     restart: always
     environment:

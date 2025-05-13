@@ -2,10 +2,9 @@ name: OWASP ZAP scan
 
 on:
   push:
-    branches:
-      - Develop
+  
   pull_request:
-    
+  
   workflow_dispatch:
 
 permissions:
