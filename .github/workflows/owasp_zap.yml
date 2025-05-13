@@ -29,6 +29,20 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+      
+      postgres:
+        image: postgres@sha256:f89a36ed5069cee5125bb9ddec623f26989792560eae9a06f767c87ba117cb6d
+        env:
+          POSTGRES_USER: ${{ secrets.DB_USER_LOCAL }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD_LOCAL }}
+          POSTGRES_DB: ${{ secrets.DB_NAME_LOCAL }}
+          POSTGRES_HOST: ${{ secrets.DB_HOST_LOCAL }}
+          POSTGRES_PORT: ${{ secrets.DB_PORT_LOCAL }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -51,9 +65,22 @@ jobs:
           echo "ES_USERNAME=elastic" >> $GITHUB_ENV
           echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
 
+      - name: Set CONN_STR from secrets
+        run: |
+          echo "CONN_STR=host=${{ secrets.DB_HOST_LOCAL }} port=${{ secrets.DB_PORT_LOCAL }} user=${{ secrets.DB_USER_LOCAL }} password=${{ secrets.DB_PASSWORD_LOCAL }} dbname=${{ secrets.DB_NAME_LOCAL }} sslmode=disable" >> $GITHUB_ENV
+
       - name: Run the application
         run: |
-          go run ./src/backend/ . & sleep 20
+          go run ./src/backend/ . &
+          for i in {1..10}; do
+            if curl -s http://localhost:8080 >/dev/null; then
+              echo "App is running!"
+              break
+            else
+              echo "Waitin for app to start..."
+              sleep 5
+            fi
+          done    
       
       - name: Ensure the application is running
         run: |
