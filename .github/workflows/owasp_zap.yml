@@ -53,7 +53,7 @@ jobs:
       - name: Set up docker-compose
         run: |
           cd ../..
-          docker-compose -f docker-compose.dev.yml up -d --build
+          docker compose -f docker-compose.dev.yml up -d --build
       
       - name: Set environment variables for Elasticsearch
         run: |
