@@ -39,7 +39,7 @@ jobs:
           POSTGRES_HOST: ${{ secrets.DB_HOST_LOCAL }}
           POSTGRES_PORT: ${{ secrets.DB_PORT_LOCAL }}
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -61,7 +61,7 @@ jobs:
 
       - name: Set CONN_STR from secrets
         run: |
-          echo "CONN_STR=host=${{ secrets.DB_HOST_LOCAL }} port=${{ secrets.DB_PORT_LOCAL }} user=${{ secrets.DB_USER_LOCAL }} password=${{ secrets.DB_PASSWORD_LOCAL }} dbname=${{ secrets.DB_NAME_LOCAL }} sslmode=disable" >> $GITHUB_ENV
+          echo "CONN_STR=host=${{ secrets.DB_HOST_LOCAL }} port=5433 user=${{ secrets.DB_USER_LOCAL }} password=${{ secrets.DB_PASSWORD_LOCAL }} dbname=${{ secrets.DB_NAME_LOCAL }} sslmode=disable" >> $GITHUB_ENV
 
       - name: Wait for the application to start
         run: |
