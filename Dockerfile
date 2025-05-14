@@ -1,6 +1,6 @@
 FROM golang:1.24.0-alpine AS builder
 
-RUN apk add --no-cache build-base=0.5-r3 postgresql15-dev=15.12-r0
+RUN apk add --no-cache build-base=0.5-r3 postgresql15-dev=15.13-r0
 
 RUN addgroup -S nonroot \
     && adduser -S nonroot -G nonroot
