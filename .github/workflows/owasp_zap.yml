@@ -50,19 +50,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
+      - name: Set environment variables 
+        run: |
+          echo "CONN_STR=host=postgres port=5432 user=${{ secrets.DB_USER_LOCAL }} password=${{ secrets.DB_PASSWORD_LOCAL }} dbname=${{ secrets.DB_NAME_LOCAL }} sslmode=disable" >> $GITHUB_ENV
+          echo "DB_USER=${{ secrets.DB_USER_LOCAL }}" >> $GITHUB_ENV
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD_LOCAL }}" >> $GITHUB_ENV
+          echo "DB_NAME=${{ secrets.DB_NAME_LOCAL }}" >> $GITHUB_ENV
+          echo "APP_ENV=development" >> $GITHUB_ENV
+          echo "LOG_LEVEL=debug" >> $GITHUB_ENV
+          echo "ES_HOST=elasticsearch" >> $GITHUB_ENV
+          echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
+          echo "TEMPLATE_PATH=/app/src/templates" >> $GITHUB_ENV
+          echo "STATIC_PATH=/app/src/static" >> $GITHUB_ENV
+          echo "SESSION_SECRET=${{ secrets.SESSION_SECRET || 'default_secret' }}" >> $GITHUB_ENV
+
       - name: Set up docker-compose
         run: docker compose -f docker-compose.dev.yml up -d --build
       
-      - name: Set environment variables for Elasticsearch
-        run: |
-          echo "ES_HOST=localhost" >> $GITHUB_ENV
-          echo "ES_USERNAME=elastic" >> $GITHUB_ENV
-          echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
-
-      - name: Set CONN_STR from secrets
-        run: |
-          echo "CONN_STR=host=${{ secrets.DB_HOST_LOCAL }} port=5433 user=${{ secrets.DB_USER_LOCAL }} password=${{ secrets.DB_PASSWORD_LOCAL }} dbname=${{ secrets.DB_NAME_LOCAL }} sslmode=disable" >> $GITHUB_ENV
-
       - name: Wait for the application to start
         run: |
           for i in {1..40}; do
