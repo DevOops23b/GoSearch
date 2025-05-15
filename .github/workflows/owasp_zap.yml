@@ -50,6 +50,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
+      - name: Create empty database file for testing
+        run: |
+            mkdir -p ./src
+            touch ./src/whoknows.db
+            chmod 666 ./src/whoknows.db
+
       - name: Set environment variables 
         run: |
           echo "CONN_STR=host=postgres port=5432 user=${{ secrets.DB_USER_LOCAL }} password=${{ secrets.DB_PASSWORD_LOCAL }} dbname=${{ secrets.DB_NAME_LOCAL }} sslmode=disable" >> $GITHUB_ENV
