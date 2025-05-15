@@ -70,27 +70,31 @@ jobs:
       - name: Wait for the application to start
         run: |
           for i in {1..40}; do
-            if curl -s http://localhost:8081/ >/dev/null; then
+            if docker exec go-app curl -s http://localhost:8080/ >/dev/null; then
               echo "App is running!"
               break
-            else
-              echo "Waiting for app to start..."
-              sleep 5
             fi
+
+            if [ $i -eq 30 ]; then
+              echo "Application failed to start"
+              docker logs go-app
+              exit 1
+            fi
+
+            echo "Waiting for app to start... (Attempt $i/30)"
+            sleep 10
           done
-          echo "application faile to start"
-          exit 1
-      
+
       - name: Create report directory with proper permissions
         run: mkdir -p "$(pwd)/zap-report" && chmod 777 "$(pwd)/zap-report"
       
       - name: OWASP ZAP Scan
         run: |
           docker run --rm \
-            --network "${{ github.repository }}_default" \
+            --network "$(docker network ls --filter name=_default --format {{.Name}})" \
             -v "$(pwd)/zap-report:/zap/wrk:rw" \
             ghcr.io/zaproxy/zaproxy:stable \
-            zap-full-scan.py -t http://localhost:8081 -a -J zap-report.json -r zap-report.html -d -w zap-report.md
+            zap-full-scan.py -t http://go-app:8080 -a -J zap-report.json -r zap-report.html -d -w zap-report.md
       
       - name: Upload report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
