@@ -80,10 +80,11 @@ jobs:
       
       - name: OWASP ZAP Scan
         run: |
-          docker run --rm --network host \
-            -v "$(pwd)/zap-report:/zap/wrk/output:rw" \
+          docker run --rm \
+            --network "${{ github.repository }}_default" \
+            -v "$(pwd)/zap-report:/zap/wrk:rw" \
             ghcr.io/zaproxy/zaproxy:stable \
-            zap-full-scan.py -t http://localhost:8081 -a -J zap-report.json -r zap-report.html -d -w output
+            zap-full-scan.py -t http://localhost:8081 -a -J zap-report.json -r zap-report.html -d -w zap-report.md
       
       - name: Upload report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
