@@ -55,10 +55,21 @@ jobs:
 
       - name: Set environment variables for Elasticsearch
         run: |
+          # Elasticsearch configuration
           echo "ES_HOST=localhost" >> $GITHUB_ENV
           echo "ES_USERNAME=elastic" >> $GITHUB_ENV
-          echo "ES_PASSWORD=changeme" >> $GITHUB_ENV      
+          echo "ES_PASSWORD=changeme" >> $GITHUB_ENV
+          
+           # Database configuration
+          echo "DB_HOST=localhost" >> $GITHUB_ENV
+          echo "DB_PORT=5432" >> $GITHUB_ENV
+          echo "DB_USER=testuser" >> $GITHUB_ENV
+          echo "DB_PASSWORD=testpassword" >> $GITHUB_ENV
+          echo "DB_NAME=testdb" >> $GITHUB_ENV
 
+          # Session secret (generate a random string)
+          echo "SESSION_SECRET=$(openssl rand -hex 32)" >> $GITHUB_ENV
+          
       - name: Run tests
         working-directory: ./src/backend
         run: go test -v ./...
