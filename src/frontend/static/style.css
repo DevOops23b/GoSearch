@@ -118,14 +118,6 @@ nav h1 a:hover {
     float: right;
 }
 
-input {
-    width: 85%;
-    padding: 10px;
-    margin: 10px;
-    border: 1px solid #888888;
-    border-radius: 5px;
-}
-
 .form-actions {
     display: flex;
     gap: 10px;
