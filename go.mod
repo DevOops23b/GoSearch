@@ -5,7 +5,7 @@ go 1.24
 require github.com/gorilla/mux v1.8.1
 
 require (
-	github.com/elastic/go-elasticsearch/v8 v8.18.0
+	github.com/elastic/go-elasticsearch/v8 v8.19.0
 	github.com/gocolly/colly v1.2.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/lib/pq v1.10.9
